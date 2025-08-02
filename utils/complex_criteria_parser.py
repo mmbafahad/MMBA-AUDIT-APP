@@ -159,7 +159,7 @@ class ComplexCriteriaParser:
             return 'numerical'
             
         # Text/description patterns
-        if (any(word in text_lower for word in ['description', 'desc', 'contains', 'with', 'in description']) or
+        if (any(word in text_lower for word in ['description', 'desc', 'contain', 'contains', 'containing', 'with', 'in description']) or
             keywords['descriptions'] or keywords['suspicious'] or keywords['empty']):
             return 'text'
             
@@ -203,6 +203,9 @@ class ComplexCriteriaParser:
         """Parse text matching conditions"""
         filters = []
         text_patterns = self.nlp_processor.extract_text_patterns(text)
+        
+        # Debug output
+        print(f"DEBUG _parse_text_condition: input='{text}', patterns={text_patterns}")  # Debug
         
         # Add text pattern filters
         for pattern in text_patterns:

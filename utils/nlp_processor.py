@@ -192,9 +192,12 @@ class NLPProcessor:
         with_description_patterns = re.findall(r'with\s+description\s+([a-zA-Z0-9]+)', text.lower())
         patterns.extend(with_description_patterns)
         
-        # Look for "contain/contains X" patterns
-        contain_patterns = re.findall(r'(?:contain|contains)\s+([a-zA-Z0-9]+)', text.lower())
+        # Look for "contain/contains/containing X" patterns (wider match)
+        contain_patterns = re.findall(r'(?:contain|contains|containing)\s+([a-zA-Z0-9]+)', text.lower())
         patterns.extend(contain_patterns)
+        
+        # Debug output
+        print(f"DEBUG extract_text_patterns: input='{text}', found patterns={patterns}")  # Debug
         
         # Look for standalone capitalized words that might be company names (always check)
         # Find capitalized words that are likely company names

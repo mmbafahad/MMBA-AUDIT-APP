@@ -154,6 +154,7 @@ class NLPProcessor:
         patterns = [
             r'(?:select|get|find|show)\s*(\d+)',
             r'(\d+)\s*(?:transactions?|records?|entries?|items?)',
+            r'(\d+)\s*(?:highest|lowest|largest|smallest)',
             r'top\s*(\d+)',
             r'first\s*(\d+)',
             r'sample\s*(?:of\s*)?(\d+)'

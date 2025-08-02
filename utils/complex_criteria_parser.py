@@ -359,12 +359,12 @@ class ComplexCriteriaParser:
         
         # Apply first condition
         result_df = self._apply_simple_condition(df, conditions[0], column_mapping)
-        print(f"DEBUG: First condition returned {len(result_df)} results")
+        print(f"DEBUG: First condition returned {len(result_df)} results (sample_size: {conditions[0].get('sample_size')})")
         
         # Apply subsequent conditions with operators
         for i, condition in enumerate(conditions[1:]):
             condition_result = self._apply_simple_condition(df, condition, column_mapping)
-            print(f"DEBUG: Condition {i+2} returned {len(condition_result)} results")
+            print(f"DEBUG: Condition {i+2} returned {len(condition_result)} results (sample_size: {condition.get('sample_size')})")
             
             if i < len(operators):
                 operator = operators[i]

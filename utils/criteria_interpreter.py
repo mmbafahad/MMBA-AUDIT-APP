@@ -198,24 +198,42 @@ class CriteriaInterpreter:
             )
         
         # Sort results if specified
-        if parsed_criteria['sort_by'] and parsed_criteria['sort_by'] in column_mapping:
-            sort_column = column_mapping[parsed_criteria['sort_by']]
+        if parsed_criteria['sort_by'] and len(result_df) > 0:
+            # Handle special sorting columns for credit/debit specific queries
+            if parsed_criteria['sort_by'] == 'credit_amount_only':
+                sort_column = 'credit_amount_only'
+            elif parsed_criteria['sort_by'] == 'debit_amount_only':
+                sort_column = 'debit_amount_only'
+            elif parsed_criteria['sort_by'] in column_mapping:
+                sort_column = column_mapping[parsed_criteria['sort_by']]
+            else:
+                sort_column = parsed_criteria['sort_by']
+            
             if sort_column in result_df.columns:
                 ascending = parsed_criteria['sort_order'] == 'asc'
                 result_df = result_df.sort_values(sort_column, ascending=ascending)
                 
                 # Add selection reason for sorted results
                 if 'selection_reason' not in result_df.columns:
-                    order_desc = 'highest' if not ascending else 'lowest'
-                    result_df['selection_reason'] = f'Selected based on {order_desc} {parsed_criteria["sort_by"]} values'
+                    result_df['selection_reason'] = ''
+                order_desc = 'highest' if not ascending else 'lowest'
+                if parsed_criteria['sort_by'] == 'credit_amount_only':
+                    result_df['selection_reason'] = result_df['selection_reason'].astype(str) + f'; Selected based on {order_desc} credit amounts'
+                elif parsed_criteria['sort_by'] == 'debit_amount_only':
+                    result_df['selection_reason'] = result_df['selection_reason'].astype(str) + f'; Selected based on {order_desc} debit amounts'
+                else:
+                    result_df['selection_reason'] = result_df['selection_reason'].astype(str) + f'; Selected based on {order_desc} {parsed_criteria["sort_by"]} values'
+                result_df['selection_reason'] = result_df['selection_reason'].str.strip('; ')
         
         # Apply sample size limit
-        if parsed_criteria['sample_size'] and parsed_criteria['sample_size'] > 0:
+        if parsed_criteria['sample_size'] and parsed_criteria['sample_size'] > 0 and len(result_df) > 0:
             result_df = result_df.head(parsed_criteria['sample_size'])
             
             # Update selection reason to include sample size
-            if 'selection_reason' in result_df.columns:
-                result_df['selection_reason'] = result_df['selection_reason'] + f' (top {parsed_criteria["sample_size"]})'
+            if 'selection_reason' not in result_df.columns:
+                result_df['selection_reason'] = ''
+            result_df['selection_reason'] = result_df['selection_reason'].astype(str) + f'; Top {parsed_criteria["sample_size"]} selected'
+            result_df['selection_reason'] = result_df['selection_reason'].str.strip('; ')
         
         # If no specific filters but risk analysis was requested, return high-risk transactions
         if (not any([parsed_criteria['amount_filters'], parsed_criteria['description_filters'],

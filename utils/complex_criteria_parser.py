@@ -199,8 +199,10 @@ class ComplexCriteriaParser:
         """Detect the type of condition"""
         text_lower = text.lower()
         
-        # Reference number patterns
-        if any(word in text_lower for word in ['reference', 'ref', 'ref#', 'reference#']):
+        # Reference number patterns (enhanced)
+        if (any(word in text_lower for word in ['reference', 'ref', 'ref#', 'reference#']) or
+            re.search(r'with\s+reference', text_lower) or
+            re.search(r'transaction[s]?\s+with\s+reference', text_lower)):
             return 'reference'
             
         # Numerical patterns
@@ -226,10 +228,12 @@ class ComplexCriteriaParser:
         # Extract sample size
         sample_size = self.nlp_processor.extract_sample_size(text)
         
-        # Check for credit/debit specific
-        if keywords['credit_specific']:
+        # Check for credit/debit specific (enhanced detection)
+        if (keywords['credit_specific'] or 
+            any(word in text.lower() for word in ['credit amount', 'in credit', 'credit transactions'])):
             sort_by = 'credit_amount_only'
-        elif keywords['debit_specific']:
+        elif (keywords['debit_specific'] or 
+              any(word in text.lower() for word in ['debit amount', 'in debit', 'debit transactions'])):
             sort_by = 'debit_amount_only'
         
         # Parse comparison operators
@@ -281,26 +285,34 @@ class ComplexCriteriaParser:
         """Parse reference number filtering conditions"""
         filters = []
         
-        # Extract reference numbers
+        # Enhanced reference patterns to handle alphanumeric and comma-separated values
         ref_patterns = [
-            r'reference\s+(\d+)',
-            r'ref\s+(\d+)',
-            r'ref#\s*(\d+)',
-            r'reference#\s*(\d+)'
+            r'reference[s]?\s+([A-Za-z0-9\-,\s]+)',
+            r'ref[s]?\s+([A-Za-z0-9\-,\s]+)', 
+            r'ref#\s*([A-Za-z0-9\-,\s]+)',
+            r'reference#\s*([A-Za-z0-9\-,\s]+)',
+            r'with\s+reference[s]?\s+([A-Za-z0-9\-,\s]+)',
+            r'transaction[s]?\s+with\s+reference[s]?\s+([A-Za-z0-9\-,\s]+)'
         ]
         
         reference_numbers = []
         for pattern in ref_patterns:
-            matches = re.findall(pattern, text.lower())
-            reference_numbers.extend([int(match) for match in matches])
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Split by comma and clean up each reference
+                refs = [ref.strip() for ref in match.split(',') if ref.strip()]
+                reference_numbers.extend(refs)
         
-        # Also add any standalone numbers found
-        reference_numbers.extend([int(num) for num in numbers if num == int(num)])
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_refs = []
+        for ref in reference_numbers:
+            if ref not in seen:
+                seen.add(ref)
+                unique_refs.append(ref)
         
-        # Remove duplicates
-        reference_numbers = list(set(reference_numbers))
-        
-        for ref_num in reference_numbers:
+        # Create filters for each reference
+        for ref_num in unique_refs:
             filters.append({
                 'type': 'reference_equals',
                 'value': ref_num,
@@ -309,7 +321,7 @@ class ComplexCriteriaParser:
         
         return {
             'filters': filters,
-            'reference_numbers': reference_numbers
+            'reference_numbers': unique_refs
         }
     
     def _parse_description_condition(self, text: str, keywords: Dict[str, List[str]]) -> Dict[str, Any]:

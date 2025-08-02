@@ -84,9 +84,21 @@ class ComplexCriteriaParser:
         
         # Extract criteria types from all conditions
         criteria_types = []
+        amount_filters = []
+        text_patterns = []
+        reference_filters = []
+        
         for condition in conditions:
             if condition.get('type'):
                 criteria_types.append(condition['type'])
+            # Extract filters for compatibility
+            for filter_item in condition.get('filters', []):
+                if filter_item.get('type') in ['greater_than', 'less_than', 'equal_to']:
+                    amount_filters.append(filter_item)
+                elif filter_item.get('type') == 'text_contains':
+                    text_patterns.append(filter_item.get('value', ''))
+                elif filter_item.get('type') == 'reference_equals':
+                    reference_filters.append(filter_item.get('value', ''))
         
         return {
             'logical_structure': {
@@ -95,6 +107,9 @@ class ComplexCriteriaParser:
             },
             'conditions': conditions,
             'criteria_types': list(set(criteria_types)),  # Remove duplicates
+            'amount_filters': amount_filters,
+            'text_patterns': text_patterns,
+            'reference_filters': reference_filters,
             'sample_size': sample_size,
             'sort_by': sort_by,
             'sort_order': sort_order,
@@ -105,10 +120,27 @@ class ComplexCriteriaParser:
         """Parse simple criteria without logical operators"""
         condition = self._parse_individual_condition(criteria_text, column_mapping)
         
+        # Extract compatibility fields
+        amount_filters = []
+        text_patterns = []
+        reference_filters = []
+        
+        if condition:
+            for filter_item in condition.get('filters', []):
+                if filter_item.get('type') in ['greater_than', 'less_than', 'equal_to']:
+                    amount_filters.append(filter_item)
+                elif filter_item.get('type') == 'text_contains':
+                    text_patterns.append(filter_item.get('value', ''))
+                elif filter_item.get('type') == 'reference_equals':
+                    reference_filters.append(filter_item.get('value', ''))
+        
         return {
             'logical_structure': None,
             'conditions': [condition] if condition else [],
             'criteria_types': [condition.get('type')] if condition else [],
+            'amount_filters': amount_filters,
+            'text_patterns': text_patterns,
+            'reference_filters': reference_filters,
             'sample_size': condition.get('sample_size') if condition else None,
             'sort_by': condition.get('sort_by') if condition else None,
             'sort_order': condition.get('sort_order', 'desc') if condition else 'desc',
@@ -204,8 +236,7 @@ class ComplexCriteriaParser:
         filters = []
         text_patterns = self.nlp_processor.extract_text_patterns(text)
         
-        # Debug output
-        print(f"DEBUG _parse_text_condition: input='{text}', patterns={text_patterns}")  # Debug
+
         
         # Add text pattern filters
         for pattern in text_patterns:

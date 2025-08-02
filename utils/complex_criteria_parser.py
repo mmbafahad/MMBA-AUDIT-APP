@@ -34,9 +34,10 @@ class ComplexCriteriaParser:
             'raw_text': criteria_text
         }
         
-        # Check for logical operators
-        has_and = ' AND ' in criteria_text.upper() or ' and ' in criteria_text.lower()
-        has_or = ' OR ' in criteria_text.upper() or ' or ' in criteria_text.lower()
+        # Check for logical operators (case insensitive)
+        text_upper = criteria_text.upper()
+        has_and = ' AND ' in text_upper
+        has_or = ' OR ' in text_upper
         
         if has_and or has_or:
             # Parse complex logical structure
@@ -54,8 +55,8 @@ class ComplexCriteriaParser:
         # First handle parentheses for grouping
         criteria_text = self._handle_parentheses(criteria_text)
         
-        # Split by logical operators
-        parts = re.split(r'\s+(AND|OR|and|or)\s+', criteria_text)
+        # Split by logical operators (case insensitive)
+        parts = re.split(r'\s+(AND|OR|and|or)\s+', criteria_text, flags=re.IGNORECASE)
         
         conditions = []
         operators = []
@@ -310,8 +311,9 @@ class ComplexCriteriaParser:
                     common_indices = result_df.index.intersection(condition_result.index)
                     result_df = result_df.loc[common_indices]
                 elif operator == 'OR':
-                    # Union of results
-                    result_df = pd.concat([result_df, condition_result]).drop_duplicates()
+                    # Union of results - combine both DataFrames and remove duplicates
+                    combined_df = pd.concat([result_df, condition_result], ignore_index=False)
+                    result_df = combined_df.drop_duplicates().reset_index(drop=True)
         
         # Apply overall sorting and sample size
         if parsed_criteria['sort_by'] and len(result_df) > 0:
@@ -355,7 +357,8 @@ class ComplexCriteriaParser:
                 column = column_mapping[field]
                 pattern = filter_item['value']
                 mask = df[column].astype(str).str.lower().str.contains(pattern.lower(), na=False, regex=False)
-                return df[mask]
+                filtered_df = df[mask].copy()
+                return filtered_df
         
         elif filter_item['type'] == 'reference_equals':
             field = filter_item.get('field', 'reference')
@@ -363,7 +366,8 @@ class ComplexCriteriaParser:
                 column = column_mapping[field]
                 value = filter_item['value']
                 mask = df[column].astype(str).str.contains(str(value), na=False)
-                return df[mask]
+                filtered_df = df[mask].copy()
+                return filtered_df
         
         elif filter_item['type'] in ['greater_than', 'less_than', 'equal_to']:
             # Numerical filters
@@ -374,6 +378,8 @@ class ComplexCriteriaParser:
                 numeric_df[amount_column] = pd.to_numeric(numeric_df[amount_column], errors='coerce')
                 
                 value = filter_item['value']
+                mask = pd.Series([False] * len(df), index=df.index)
+                
                 if filter_item['type'] == 'greater_than':
                     mask = numeric_df[amount_column] > value
                 elif filter_item['type'] == 'less_than':
@@ -381,7 +387,8 @@ class ComplexCriteriaParser:
                 elif filter_item['type'] == 'equal_to':
                     mask = numeric_df[amount_column] == value
                 
-                return df[mask]
+                filtered_df = df[mask].copy()
+                return filtered_df
         
         elif filter_item['type'] == 'suspicious_description':
             # Apply suspicious description analysis
@@ -389,7 +396,8 @@ class ComplexCriteriaParser:
             if description_column in df.columns:
                 analyzed_df = self.audit_analyzer.analyze_descriptions(df, description_column)
                 if 'audit_risk_score' in analyzed_df.columns:
-                    return analyzed_df[analyzed_df['audit_risk_score'] >= 0.4]
+                    filtered_df = analyzed_df[analyzed_df['audit_risk_score'] >= 0.4].copy()
+                    return filtered_df
         
         elif filter_item['type'] == 'empty_description':
             description_column = column_mapping.get('description', 'description')
@@ -397,9 +405,10 @@ class ComplexCriteriaParser:
                 mask = (df[description_column].isna() | 
                        (df[description_column].astype(str).str.strip() == '') |
                        (df[description_column].astype(str).str.lower().isin(['nan', 'null', 'none'])))
-                return df[mask]
+                filtered_df = df[mask].copy()
+                return filtered_df
         
-        return df
+        return df.copy()
     
     def _get_sort_column(self, sort_by: str, column_mapping: Dict[str, str], df: pd.DataFrame) -> str:
         """Get the actual column name for sorting"""
@@ -411,4 +420,5 @@ class ComplexCriteriaParser:
             return column_mapping[sort_by]
         elif sort_by in df.columns:
             return sort_by
-        return None
+        # Default fallback
+        return column_mapping.get('amount', 'amount') if 'amount' in column_mapping else None

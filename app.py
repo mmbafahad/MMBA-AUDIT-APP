@@ -293,6 +293,10 @@ def apply_sampling_criteria(criteria_text):
                     conditions_count = len(parsed_criteria['logical_structure']['conditions'])
                     operators = ', '.join(parsed_criteria['logical_structure']['operators'])
                     st.info(f"🔍 Complex query detected: {conditions_count} conditions with operators: {operators}")
+                    
+                    # Show individual conditions for debugging
+                    for i, condition in enumerate(parsed_criteria['logical_structure']['conditions']):
+                        st.info(f"Condition {i+1}: Type={condition.get('type')}, Filters={len(condition.get('filters', []))}, Text={condition.get('text', '')[:50]}...")
                 
                 # Apply complex criteria
                 sampled_data = st.session_state.complex_parser.apply_complex_criteria(

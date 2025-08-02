@@ -192,13 +192,16 @@ class NLPProcessor:
         with_description_patterns = re.findall(r'with\s+description\s+([a-zA-Z0-9]+)', text.lower())
         patterns.extend(with_description_patterns)
         
-        # Look for standalone capitalized words that might be company names (if no other patterns found)
-        if not patterns:
-            # Find capitalized words that are likely company names
-            capitalized_words = re.findall(r'\b([A-Z][a-zA-Z0-9]{2,})\b', text)
-            # Filter out common words
-            common_words = {'Select', 'Find', 'Show', 'Get', 'With', 'Description', 'Transaction', 'Transactions', 'Amount', 'Amounts'}
-            company_names = [word for word in capitalized_words if word not in common_words]
-            patterns.extend(company_names)
+        # Look for "contain/contains X" patterns
+        contain_patterns = re.findall(r'(?:contain|contains)\s+([a-zA-Z0-9]+)', text.lower())
+        patterns.extend(contain_patterns)
+        
+        # Look for standalone capitalized words that might be company names (always check)
+        # Find capitalized words that are likely company names
+        capitalized_words = re.findall(r'\b([A-Z][a-zA-Z0-9]{2,})\b', text)
+        # Filter out common words
+        common_words = {'Select', 'Find', 'Show', 'Get', 'With', 'Description', 'Transaction', 'Transactions', 'Amount', 'Amounts', 'AND', 'OR'}
+        company_names = [word for word in capitalized_words if word not in common_words]
+        patterns.extend(company_names)
         
         return patterns

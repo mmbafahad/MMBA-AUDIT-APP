@@ -468,6 +468,7 @@ class ComplexCriteriaParser:
                 pattern = filter_item['value']
                 mask = df[column].astype(str).str.lower().str.contains(pattern.lower(), na=False, regex=False)
                 filtered_df = df[mask].copy()
+                print(f"DEBUG: Text filter '{pattern}' found {len(filtered_df)} matches in column '{column}'")
                 return filtered_df
         
         elif filter_item['type'] == 'reference_equals':

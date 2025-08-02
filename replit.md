@@ -7,6 +7,12 @@ This is an Audit Transaction Sampling Tool built with Streamlit that allows audi
 - Modified interface to support both pasted data and file upload
 - Enhanced error handling for data processing
 - Updated welcome screen to emphasize natural language criteria input
+- **NEW**: Implemented complex criteria parser with AND/OR logical operators
+- **NEW**: Added support for numerical filtering (e.g., "15 highest amount transactions")
+- **NEW**: Enhanced text matching capabilities (e.g., "transactions with NashTech in description")
+- **NEW**: Added reference number filtering (e.g., "transactions with reference 123, 125")
+- Fixed credit-only and debit-only transaction filtering
+- Enhanced suspicious description detection using ISA audit standards
 
 # User Preferences
 
@@ -28,6 +34,7 @@ Preferred communication style: Simple, everyday language.
   - `NLPProcessor`: Natural language processing for criteria interpretation using NLTK and spaCy
   - `AuditAnalyzer`: Audit-specific analysis including red flag detection and suspicious pattern identification
   - `CriteriaInterpreter`: Orchestrates NLP processing and applies business logic for sampling criteria
+  - **NEW**: `ComplexCriteriaParser`: Advanced parser for complex criteria with AND/OR logical operators, numerical filtering, text matching, and reference number filtering
 
 ## Data Processing Strategy
 - **File Format Support**: CSV (with multiple encoding fallbacks) and Excel formats

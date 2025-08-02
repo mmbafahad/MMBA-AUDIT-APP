@@ -7,6 +7,7 @@ from utils.data_processor import DataProcessor
 from utils.nlp_processor import NLPProcessor
 from utils.audit_analyzer import AuditAnalyzer
 from utils.criteria_interpreter import CriteriaInterpreter
+from utils.complex_criteria_parser import ComplexCriteriaParser
 
 # Initialize session state
 if 'data' not in st.session_state:
@@ -19,6 +20,8 @@ if 'audit_analyzer' not in st.session_state:
     st.session_state.audit_analyzer = AuditAnalyzer()
 if 'criteria_interpreter' not in st.session_state:
     st.session_state.criteria_interpreter = CriteriaInterpreter()
+if 'complex_parser' not in st.session_state:
+    st.session_state.complex_parser = ComplexCriteriaParser()
 
 def main():
     st.set_page_config(
@@ -166,23 +169,22 @@ Date       Amount    Description        Account
             st.markdown("Enter your sampling criteria in natural language:")
             
             # Example criteria
-            with st.expander("💡 Example Criteria"):
-                st.markdown("**Amount-based criteria:**")
-                st.code("Select 10 highest value transactions")
-                st.code("Find credit amounts above 50000")
-                st.code("Show highest debit amounts only")
-                st.code("Get transactions with round number amounts")
+            with st.expander("💡 Example Complex Criteria"):
+                st.markdown("**Simple Criteria:**")
+                st.code("Select 15 highest amount transactions")
+                st.code("Find transactions with NashTech in description")
+                st.code("Show transactions with reference 123")
                 
-                st.markdown("**Description-based criteria:**")
-                st.code("Find transactions with suspicious descriptions")
-                st.code("Show entries with no description or blank descriptions")
-                st.code("Find transactions containing 'misc' or 'suspense'")
-                st.code("Get entries with vague or generic descriptions")
+                st.markdown("**Complex Criteria with AND/OR:**")
+                st.code("15 highest amount transactions AND transactions with NashTech in description")
+                st.code("transactions with reference 123 OR reference 125")
+                st.code("amount > 50000 AND description contains 'misc'")
+                st.code("credit amounts above 25000 OR debit amounts above 30000")
                 
-                st.markdown("**Combined criteria:**")
-                st.code("Select 15 highest credit amounts with suspicious descriptions")
-                st.code("Find duplicate transactions")
-                st.code("Show weekend transactions above 10000")
+                st.markdown("**Advanced Examples:**")
+                st.code("10 highest credit amounts AND (description contains 'payment' OR description contains 'transfer')")
+                st.code("transactions with suspicious descriptions OR amount > 100000")
+                st.code("reference 456 OR reference 789 AND amount > 10000")
             
             criteria_text = st.text_area(
                 "Enter criteria:",
@@ -235,7 +237,10 @@ Date       Amount    Description        Account
         ### Features:
         - 📋 **Paste transaction data directly** or upload CSV/Excel files
         - 🗂️ Flexible column mapping for different data formats
-        - 🗣️ **Natural language criteria input** - describe what you want in plain English
+        - 🗣️ **Complex natural language criteria** with AND/OR logical operators
+        - 🔢 **Numerical filtering** (e.g., "15 highest amount transactions")
+        - 📝 **Text matching** (e.g., "transactions with NashTech in description") 
+        - 🔗 **Reference number filtering** (e.g., "transactions with reference 123, 125")
         - 🔍 Intelligent description analysis for audit red flags
         - 📊 Smart sampling based on ISA and general audit rules
         - 📤 Export functionality for selected samples
@@ -273,27 +278,43 @@ def apply_sampling_criteria(criteria_text):
                     working_column_mapping['amount'] = net_amount_col
                     st.info("💡 Using combined debit/credit amounts for analysis")
             
-            # Parse criteria using NLP
-            parsed_criteria = st.session_state.criteria_interpreter.parse_criteria(
-                criteria_text, working_column_mapping
-            )
+            # Determine if this is a complex criteria (contains AND/OR)
+            is_complex = any(op in criteria_text.upper() for op in [' AND ', ' OR '])
             
-            # Debug output for different query types
-            if parsed_criteria.get('transaction_type_filter') == 'credit':
-                st.info(f"🔍 Debug: Detected credit-only query. Sort by: {parsed_criteria.get('sort_by')}, Sample size: {parsed_criteria.get('sample_size')}")
-            
-            if parsed_criteria.get('text_patterns'):
-                st.info(f"🔍 Debug: Found text patterns: {parsed_criteria.get('text_patterns')}")
+            if is_complex:
+                # Use complex criteria parser
+                st.info(f"🔄 Processing complex criteria with logical operators...")
+                parsed_criteria = st.session_state.complex_parser.parse_complex_criteria(
+                    criteria_text, working_column_mapping
+                )
                 
-            if parsed_criteria.get('description_filters'):
-                st.info(f"🔍 Debug: Description filters: {parsed_criteria.get('description_filters')}")
-            
-            # Apply criteria to data
-            sampled_data = st.session_state.criteria_interpreter.apply_criteria(
-                processed_data, 
-                parsed_criteria, 
-                working_column_mapping
-            )
+                # Debug output for complex queries
+                if parsed_criteria.get('logical_structure'):
+                    conditions_count = len(parsed_criteria['logical_structure']['conditions'])
+                    operators = ', '.join(parsed_criteria['logical_structure']['operators'])
+                    st.info(f"🔍 Complex query detected: {conditions_count} conditions with operators: {operators}")
+                
+                # Apply complex criteria
+                sampled_data = st.session_state.complex_parser.apply_complex_criteria(
+                    processed_data, parsed_criteria, working_column_mapping
+                )
+            else:
+                # Use simple criteria parser
+                parsed_criteria = st.session_state.criteria_interpreter.parse_criteria(
+                    criteria_text, working_column_mapping
+                )
+                
+                # Debug output for simple queries
+                if parsed_criteria.get('transaction_type_filter') == 'credit':
+                    st.info(f"🔍 Credit-only query. Sort by: {parsed_criteria.get('sort_by')}, Sample size: {parsed_criteria.get('sample_size')}")
+                
+                if parsed_criteria.get('text_patterns'):
+                    st.info(f"🔍 Text patterns found: {parsed_criteria.get('text_patterns')}")
+                
+                # Apply simple criteria
+                sampled_data = st.session_state.criteria_interpreter.apply_criteria(
+                    processed_data, parsed_criteria, working_column_mapping
+                )
             
             # Analyze descriptions for audit red flags
             if 'description' in working_column_mapping:

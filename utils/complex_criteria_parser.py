@@ -416,8 +416,26 @@ class ComplexCriteriaParser:
         """Apply a single condition to dataframe"""
         result_df = df.copy()
         
-        for filter_item in condition.get('filters', []):
-            result_df = self._apply_single_filter(result_df, filter_item, column_mapping)
+        # Special handling for reference conditions with multiple filters (OR within condition)
+        if condition.get('type') == 'reference' and len(condition.get('filters', [])) > 1:
+            # For reference conditions, apply OR logic between multiple reference filters
+            reference_results = []
+            for filter_item in condition.get('filters', []):
+                if filter_item.get('type') == 'reference_equals':
+                    filtered = self._apply_single_filter(df, filter_item, column_mapping)
+                    if len(filtered) > 0:
+                        reference_results.append(filtered)
+            
+            if reference_results:
+                # Combine all reference results with OR logic
+                result_df = pd.concat(reference_results, ignore_index=False).drop_duplicates()
+            else:
+                # No reference matches found
+                result_df = df.iloc[0:0].copy()  # Empty dataframe with same structure
+        else:
+            # Standard filter application (AND logic within condition)
+            for filter_item in condition.get('filters', []):
+                result_df = self._apply_single_filter(result_df, filter_item, column_mapping)
         
         # Apply sorting for this condition
         if condition.get('sort_by') and len(result_df) > 0:
@@ -462,6 +480,9 @@ class ComplexCriteriaParser:
                        df[column].astype(str).str.upper().str.contains(str(value).upper(), na=False, regex=False))
                 filtered_df = df[mask].copy()
                 print(f"DEBUG: Reference filter '{value}' found {len(filtered_df)} matches in column '{column}'")
+                if len(filtered_df) > 0:
+                    sample_refs = filtered_df[column].head(3).tolist()
+                    print(f"DEBUG: Sample matches for '{value}': {sample_refs}")
                 return filtered_df
         
         elif filter_item['type'] in ['greater_than', 'less_than', 'equal_to']:

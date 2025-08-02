@@ -457,8 +457,11 @@ class ComplexCriteriaParser:
             if field in column_mapping and column_mapping[field] in df.columns:
                 column = column_mapping[field]
                 value = filter_item['value']
-                mask = df[column].astype(str).str.contains(str(value), na=False)
+                # Use exact match or partial match for reference numbers
+                mask = (df[column].astype(str).str.contains(str(value), na=False, regex=False) |
+                       df[column].astype(str).str.upper().str.contains(str(value).upper(), na=False, regex=False))
                 filtered_df = df[mask].copy()
+                print(f"DEBUG: Reference filter '{value}' found {len(filtered_df)} matches in column '{column}'")
                 return filtered_df
         
         elif filter_item['type'] in ['greater_than', 'less_than', 'equal_to']:

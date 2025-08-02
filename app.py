@@ -320,12 +320,16 @@ def apply_sampling_criteria(criteria_text):
                     processed_data, parsed_criteria, working_column_mapping
                 )
             
-            # Analyze descriptions for audit red flags
+            # Analyze descriptions for audit red flags (conditional based on criteria type)
             if 'description' in working_column_mapping:
-                description_col = working_column_mapping['description']
-                sampled_data = st.session_state.audit_analyzer.analyze_descriptions(
-                    sampled_data, description_col
-                )
+                description_col = working_column_mapping['description'] 
+                # Only analyze if we have description-related criteria or general analysis is needed
+                if (not is_complex or 
+                    any('description' in str(cond.get('type', '')) or 'text' in str(cond.get('type', '')) 
+                        for cond in parsed_criteria.get('conditions', []))):
+                    sampled_data = st.session_state.audit_analyzer.analyze_descriptions(
+                        sampled_data, description_col
+                    )
         
         # Display results
         st.header("🎯 Sampling Results")

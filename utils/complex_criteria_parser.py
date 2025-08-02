@@ -82,12 +82,19 @@ class ComplexCriteriaParser:
                 sort_by = condition['sort_by']
                 sort_order = condition.get('sort_order', 'desc')
         
+        # Extract criteria types from all conditions
+        criteria_types = []
+        for condition in conditions:
+            if condition.get('type'):
+                criteria_types.append(condition['type'])
+        
         return {
             'logical_structure': {
                 'conditions': conditions,
                 'operators': operators
             },
             'conditions': conditions,
+            'criteria_types': list(set(criteria_types)),  # Remove duplicates
             'sample_size': sample_size,
             'sort_by': sort_by,
             'sort_order': sort_order,
@@ -101,6 +108,7 @@ class ComplexCriteriaParser:
         return {
             'logical_structure': None,
             'conditions': [condition] if condition else [],
+            'criteria_types': [condition.get('type')] if condition else [],
             'sample_size': condition.get('sample_size') if condition else None,
             'sort_by': condition.get('sort_by') if condition else None,
             'sort_order': condition.get('sort_order', 'desc') if condition else 'desc',

@@ -137,6 +137,8 @@ Date       Amount    Description        Account
                 'type': 'Transaction Type'
             }
             
+            st.info("💡 Tip: For debit/credit data, map both columns. You can then specify 'credit amounts only' or 'debit amounts only' in your criteria.")
+            
             for field, label in standard_fields.items():
                 st.session_state.column_mapping[field] = st.selectbox(
                     label,
@@ -165,18 +167,22 @@ Date       Amount    Description        Account
             
             # Example criteria
             with st.expander("💡 Example Criteria"):
-                examples = [
-                    "Select 10 highest value transactions",
-                    "Find transactions with no description",
-                    "Show suspicious or vague descriptions",
-                    "Get duplicate transactions",
-                    "Select transactions above 50000",
-                    "Find entries with words like 'suspense', 'misc', or 'various'",
-                    "Show transactions on weekends",
-                    "Find round number amounts ending in 000"
-                ]
-                for example in examples:
-                    st.code(example)
+                st.markdown("**Amount-based criteria:**")
+                st.code("Select 10 highest value transactions")
+                st.code("Find credit amounts above 50000")
+                st.code("Show highest debit amounts only")
+                st.code("Get transactions with round number amounts")
+                
+                st.markdown("**Description-based criteria:**")
+                st.code("Find transactions with suspicious descriptions")
+                st.code("Show entries with no description or blank descriptions")
+                st.code("Find transactions containing 'misc' or 'suspense'")
+                st.code("Get entries with vague or generic descriptions")
+                
+                st.markdown("**Combined criteria:**")
+                st.code("Select 15 highest credit amounts with suspicious descriptions")
+                st.code("Find duplicate transactions")
+                st.code("Show weekend transactions above 10000")
             
             criteria_text = st.text_area(
                 "Enter criteria:",

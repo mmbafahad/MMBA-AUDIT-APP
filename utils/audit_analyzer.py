@@ -11,22 +11,54 @@ class AuditAnalyzer:
         self.setup_audit_patterns()
     
     def setup_audit_patterns(self):
-        """Define audit red flag patterns and keywords"""
-        self.suspicious_keywords = [
-            # Vague descriptions
-            'misc', 'miscellaneous', 'various', 'sundry', 'general', 'other',
-            'suspense', 'clearing', 'adjustment', 'correction', 'error',
+        """Define audit red flag patterns and keywords based on ISA audit standards"""
+        self.suspicious_keywords = {
+            # Vague or Generic Descriptions
+            'vague_generic': [
+                'misc', 'miscellaneous', 'general', 'other', 'adjustment', 
+                'correction', 'reversal', 'unknown', 'n/a', 'various', 'sundry'
+            ],
+            
+            # Unusual Keywords
+            'unusual': [
+                'gift', 'donation', 'charity', 'contribution', 'political', 'sponsorship'
+            ],
+            
+            # Personal/Non-Business Terms
+            'personal': [
+                'personal', 'private', 'loan to staff', 'advance to employee', 
+                'salary adjustment', 'employee loan', 'staff advance'
+            ],
+            
+            # Keywords Indicating Irregularities
+            'irregularities': [
+                'write-off', 'loss', 'fraud', 'error', 'cash short', 'overpayment', 
+                'underpayment', 'shortage', 'variance', 'discrepancy'
+            ],
+            
+            # Related Party Transactions
+            'related_party': [
+                'director', 'shareholder', 'owner', 'affiliate', 'subsidiary', 
+                'intercompany', 'related party', 'management'
+            ],
+            
+            # Suspicious Vendor/Payee Names
+            'suspicious_vendor': [
+                'cash', 'supplier', 'vendor', 'unknown vendor', 'generic supplier',
+                'misc vendor', 'various suppliers'
+            ],
+            
+            # High-Risk Terms
+            'high_risk': [
+                'off-book', 'unrecorded', 'adjustment entry', 'manual entry', 
+                'correction', 'suspense', 'clearing', 'temporary'
+            ],
             
             # Incomplete descriptions
-            'tbd', 'tbc', 'pending', 'temp', 'temporary', 'hold',
-            
-            # Generic terms
-            'expense', 'payment', 'transfer', 'entry', 'item', 'charge',
-            
-            # Potentially fraudulent
-            'cash', 'petty', 'advance', 'loan', 'personal', 'urgent',
-            'emergency', 'immediate', 'rush', 'confidential'
-        ]
+            'incomplete': [
+                'tbd', 'tbc', 'pending', 'temp', 'temporary', 'hold', 'n/a'
+            ]
+        }
         
         self.high_risk_patterns = [
             r'\b(?:cash|petty)\s+cash\b',  # Petty cash
@@ -66,11 +98,35 @@ class AuditAnalyzer:
                 risk_score += 0.4
                 risk_factors.append('Empty/minimal description')
             
-            # Check for suspicious keywords
-            for keyword in self.suspicious_keywords:
-                if keyword in description:
-                    risk_score += 0.2
-                    risk_factors.append(f'Suspicious keyword: {keyword}')
+            # Check for suspicious keywords by category
+            for category, keywords in self.suspicious_keywords.items():
+                for keyword in keywords:
+                    if keyword in description:
+                        if category == 'high_risk':
+                            risk_score += 0.4
+                            risk_factors.append(f'High-risk term: {keyword}')
+                        elif category == 'irregularities':
+                            risk_score += 0.35
+                            risk_factors.append(f'Irregularity indicator: {keyword}')
+                        elif category == 'related_party':
+                            risk_score += 0.3
+                            risk_factors.append(f'Related party indicator: {keyword}')
+                        elif category == 'personal':
+                            risk_score += 0.3
+                            risk_factors.append(f'Personal/non-business term: {keyword}')
+                        elif category == 'vague_generic':
+                            risk_score += 0.25
+                            risk_factors.append(f'Vague/generic description: {keyword}')
+                        elif category == 'unusual':
+                            risk_score += 0.2
+                            risk_factors.append(f'Unusual keyword: {keyword}')
+                        elif category == 'suspicious_vendor':
+                            risk_score += 0.2
+                            risk_factors.append(f'Suspicious vendor name: {keyword}')
+                        elif category == 'incomplete':
+                            risk_score += 0.15
+                            risk_factors.append(f'Incomplete description: {keyword}')
+                        break  # Only count each category once per description
             
             # Check for high-risk patterns
             for pattern in self.high_risk_patterns:

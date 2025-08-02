@@ -78,7 +78,9 @@ class NLPProcessor:
             'duplicates': ['duplicate', 'duplicated', 'same', 'identical', 'repeated'],
             'empty': ['empty', 'blank', 'null', 'missing', 'no description'],
             'dates': ['weekend', 'holiday', 'after hours', 'late', 'early'],
-            'patterns': ['round', 'ending', 'starting', 'containing']
+            'patterns': ['round', 'ending', 'starting', 'containing'],
+            'credit_specific': ['credit', 'credits', 'credit amount', 'credit amounts', 'credit only', 'credits only'],
+            'debit_specific': ['debit', 'debits', 'debit amount', 'debit amounts', 'debit only', 'debits only']
         }
         
         found_keywords = {}

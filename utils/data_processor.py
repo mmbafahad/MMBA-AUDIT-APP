@@ -271,4 +271,8 @@ class DataProcessor:
         df.loc[credit_amounts > 0, 'transaction_type'] = 'Credit'
         df.loc[(debit_amounts > 0) & (credit_amounts > 0), 'transaction_type'] = 'Both'
         
+        # Keep original debit and credit amounts for filtering
+        df['debit_amount_only'] = debit_amounts
+        df['credit_amount_only'] = credit_amounts
+        
         return df, 'net_amount'

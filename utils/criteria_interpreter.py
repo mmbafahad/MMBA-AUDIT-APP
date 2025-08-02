@@ -25,6 +25,7 @@ class CriteriaInterpreter:
             'sort_by': None,
             'sort_order': 'desc',
             'text_patterns': [],
+            'transaction_type_filter': None,
             'raw_text': criteria_text
         }
         
@@ -43,12 +44,20 @@ class CriteriaInterpreter:
         if 'amount' in criteria_types:
             parsed['amount_filters'] = self.parse_amount_criteria(criteria_text, keywords, numbers)
             
-            # Determine sorting for amount-based selection
-            if any(word in criteria_text.lower() for word in ['highest', 'top', 'maximum', 'largest']):
+            # Check for credit/debit specific requests
+            if keywords['credit_specific']:
+                parsed['transaction_type_filter'] = 'credit'
+                parsed['sort_by'] = 'credit_amount_only'
+            elif keywords['debit_specific']:
+                parsed['transaction_type_filter'] = 'debit'
+                parsed['sort_by'] = 'debit_amount_only'
+            else:
                 parsed['sort_by'] = 'amount'
+            
+            # Determine sorting order for amount-based selection
+            if any(word in criteria_text.lower() for word in ['highest', 'top', 'maximum', 'largest']):
                 parsed['sort_order'] = 'desc'
             elif any(word in criteria_text.lower() for word in ['lowest', 'bottom', 'minimum', 'smallest']):
-                parsed['sort_by'] = 'amount'
                 parsed['sort_order'] = 'asc'
         
         # Parse description-related criteria
@@ -182,6 +191,12 @@ class CriteriaInterpreter:
                 result_df, parsed_criteria['text_patterns'], column_mapping['description']
             )
         
+        # Apply transaction type filter (credit/debit specific)
+        if parsed_criteria.get('transaction_type_filter'):
+            result_df = self.apply_transaction_type_filter(
+                result_df, parsed_criteria['transaction_type_filter']
+            )
+        
         # Sort results if specified
         if parsed_criteria['sort_by'] and parsed_criteria['sort_by'] in column_mapping:
             sort_column = column_mapping[parsed_criteria['sort_by']]
@@ -289,9 +304,14 @@ class CriteriaInterpreter:
                 if 'audit_risk_score' in df.columns:
                     mask &= df['audit_risk_score'] >= 0.4
                 else:
-                    # Fallback to keyword matching
+                    # Fallback to keyword matching - flatten all suspicious keywords
+                    all_keywords = []
+                    for category, keywords in self.audit_analyzer.suspicious_keywords.items():
+                        all_keywords.extend(keywords)
+                    
+                    suspicious_pattern = '|'.join([re.escape(keyword) for keyword in all_keywords])
                     suspicious_mask = df[description_column].astype(str).str.lower().str.contains(
-                        '|'.join(self.audit_analyzer.suspicious_keywords), na=False
+                        suspicious_pattern, na=False, regex=True
                     )
                     mask &= suspicious_mask
             
@@ -342,6 +362,31 @@ class CriteriaInterpreter:
         )
         
         return df[mask]
+    
+    def apply_transaction_type_filter(self, df, transaction_type):
+        """Apply transaction type filter for credit/debit specific queries"""
+        if 'transaction_type' not in df.columns:
+            return df
+        
+        filtered_df = df.copy()
+        
+        if transaction_type == 'credit':
+            filtered_df = filtered_df[filtered_df['transaction_type'] == 'Credit']
+            if len(filtered_df) > 0:
+                if 'selection_reason' not in filtered_df.columns:
+                    filtered_df['selection_reason'] = ''
+                filtered_df['selection_reason'] = filtered_df['selection_reason'].astype(str) + '; Credit transactions only'
+                filtered_df['selection_reason'] = filtered_df['selection_reason'].str.strip('; ')
+        
+        elif transaction_type == 'debit':
+            filtered_df = filtered_df[filtered_df['transaction_type'] == 'Debit']
+            if len(filtered_df) > 0:
+                if 'selection_reason' not in filtered_df.columns:
+                    filtered_df['selection_reason'] = ''
+                filtered_df['selection_reason'] = filtered_df['selection_reason'].astype(str) + '; Debit transactions only'
+                filtered_df['selection_reason'] = filtered_df['selection_reason'].str.strip('; ')
+        
+        return filtered_df
     
     def get_interpretation_summary(self, parsed_criteria):
         """Generate human-readable summary of criteria interpretation"""

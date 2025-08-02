@@ -87,6 +87,7 @@ class ComplexCriteriaParser:
         amount_filters = []
         text_patterns = []
         reference_filters = []
+        description_filters = []
         
         for condition in conditions:
             if condition.get('type'):
@@ -97,8 +98,11 @@ class ComplexCriteriaParser:
                     amount_filters.append(filter_item)
                 elif filter_item.get('type') == 'text_contains':
                     text_patterns.append(filter_item.get('value', ''))
+                    description_filters.append(filter_item)  # Also add to description_filters
                 elif filter_item.get('type') == 'reference_equals':
                     reference_filters.append(filter_item.get('value', ''))
+                elif filter_item.get('type') in ['suspicious_description', 'empty_description']:
+                    description_filters.append(filter_item)
         
         return {
             'logical_structure': {
@@ -110,6 +114,11 @@ class ComplexCriteriaParser:
             'amount_filters': amount_filters,
             'text_patterns': text_patterns,
             'reference_filters': reference_filters,
+            'description_filters': description_filters,
+            'duplicate_check': False,
+            'risk_analysis': len(description_filters) > 0,
+            'date_filters': [],
+            'transaction_type_filter': None,
             'sample_size': sample_size,
             'sort_by': sort_by,
             'sort_order': sort_order,
@@ -124,6 +133,7 @@ class ComplexCriteriaParser:
         amount_filters = []
         text_patterns = []
         reference_filters = []
+        description_filters = []
         
         if condition:
             for filter_item in condition.get('filters', []):
@@ -131,8 +141,11 @@ class ComplexCriteriaParser:
                     amount_filters.append(filter_item)
                 elif filter_item.get('type') == 'text_contains':
                     text_patterns.append(filter_item.get('value', ''))
+                    description_filters.append(filter_item)  # Also add to description_filters
                 elif filter_item.get('type') == 'reference_equals':
                     reference_filters.append(filter_item.get('value', ''))
+                elif filter_item.get('type') in ['suspicious_description', 'empty_description']:
+                    description_filters.append(filter_item)
         
         return {
             'logical_structure': None,
@@ -141,6 +154,11 @@ class ComplexCriteriaParser:
             'amount_filters': amount_filters,
             'text_patterns': text_patterns,
             'reference_filters': reference_filters,
+            'description_filters': description_filters,
+            'duplicate_check': False,
+            'risk_analysis': len(description_filters) > 0,
+            'date_filters': [],
+            'transaction_type_filter': None,
             'sample_size': condition.get('sample_size') if condition else None,
             'sort_by': condition.get('sort_by') if condition else None,
             'sort_order': condition.get('sort_order', 'desc') if condition else 'desc',

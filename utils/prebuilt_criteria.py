@@ -13,13 +13,16 @@ class PrebuiltCriteriaProcessor:
     def apply_all_prebuilt_criteria(self, df: pd.DataFrame, column_mapping: Dict[str, str], 
                                    criteria_config: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, int]]:
         """Apply all enabled prebuilt criteria and return results with statistics"""
+        # Apply account filter if specified
+        working_df = self._apply_account_filter(df, column_mapping, criteria_config)
+        
         all_results = []
         criteria_stats = {}
         
         # 1. High-Value Transactions
         if criteria_config.get('high_value_enabled', True):
             high_value_results = self._check_high_value_transactions(
-                df, column_mapping, criteria_config.get('high_value_config', {})
+                working_df, column_mapping, criteria_config.get('high_value_config', {})
             )
             if len(high_value_results) > 0:
                 all_results.append(high_value_results)
@@ -27,14 +30,14 @@ class PrebuiltCriteriaProcessor:
         
         # 2. Missing Description
         if criteria_config.get('missing_desc_enabled', True):
-            missing_desc_results = self._check_missing_descriptions(df, column_mapping)
+            missing_desc_results = self._check_missing_descriptions(working_df, column_mapping)
             if len(missing_desc_results) > 0:
                 all_results.append(missing_desc_results)
                 criteria_stats['Missing Description'] = len(missing_desc_results)
         
         # 3. Suspicious Description
         if criteria_config.get('suspicious_desc_enabled', True):
-            suspicious_desc_results = self._check_suspicious_descriptions(df, column_mapping)
+            suspicious_desc_results = self._check_suspicious_descriptions(working_df, column_mapping)
             if len(suspicious_desc_results) > 0:
                 all_results.append(suspicious_desc_results)
                 criteria_stats['Suspicious Description'] = len(suspicious_desc_results)
@@ -42,7 +45,7 @@ class PrebuiltCriteriaProcessor:
         # 4. Duplicate Transaction Check
         if criteria_config.get('duplicate_enabled', True):
             duplicate_results = self._check_duplicate_transactions(
-                df, column_mapping, criteria_config.get('duplicate_config', {})
+                working_df, column_mapping, criteria_config.get('duplicate_config', {})
             )
             if len(duplicate_results) > 0:
                 all_results.append(duplicate_results)
@@ -51,7 +54,7 @@ class PrebuiltCriteriaProcessor:
         # 5. Round Amount Check
         if criteria_config.get('round_amount_enabled', True):
             round_amount_results = self._check_round_amounts(
-                df, column_mapping, criteria_config.get('round_amount_config', {})
+                working_df, column_mapping, criteria_config.get('round_amount_config', {})
             )
             if len(round_amount_results) > 0:
                 all_results.append(round_amount_results)
@@ -60,7 +63,7 @@ class PrebuiltCriteriaProcessor:
         # 6. Backdated/Future-Dated Check
         if criteria_config.get('date_check_enabled', True):
             date_check_results = self._check_unusual_dates(
-                df, column_mapping, criteria_config.get('date_config', {})
+                working_df, column_mapping, criteria_config.get('date_config', {})
             )
             if len(date_check_results) > 0:
                 all_results.append(date_check_results)
@@ -246,7 +249,7 @@ class PrebuiltCriteriaProcessor:
         
         # Convert dates
         try:
-            df_dates = pd.to_datetime(df[date_column], errors='coerce', infer_datetime_format=True)
+            df_dates = pd.to_datetime(df[date_column], errors='coerce')
             start_date = pd.to_datetime(start_date)
             end_date = pd.to_datetime(end_date)
         except Exception:
@@ -318,3 +321,31 @@ class PrebuiltCriteriaProcessor:
                 return combined_df
         
         return combined_df.drop_duplicates()
+    
+    def _apply_account_filter(self, df: pd.DataFrame, column_mapping: Dict[str, str], 
+                            criteria_config: Dict[str, Any]) -> pd.DataFrame:
+        """Apply account filter if specified in criteria config"""
+        account_column = column_mapping.get('account')
+        selected_accounts = criteria_config.get('selected_accounts', [])
+        
+        # If no account column mapped or no accounts selected, return full dataset
+        if not account_column or not selected_accounts or account_column not in df.columns:
+            return df
+        
+        # Filter for selected accounts
+        filtered_df = df[df[account_column].isin(selected_accounts)].copy()
+        return filtered_df
+    
+    def get_unique_accounts(self, df: pd.DataFrame, column_mapping: Dict[str, str]) -> List[str]:
+        """Get unique account names from the account column"""
+        account_column = column_mapping.get('account')
+        
+        if not account_column or account_column not in df.columns:
+            return []
+        
+        # Get unique account names, excluding null/empty values
+        accounts = df[account_column].dropna().astype(str).str.strip()
+        unique_accounts = accounts[accounts != ''].unique().tolist()
+        
+        # Sort accounts for better UI
+        return sorted(unique_accounts)

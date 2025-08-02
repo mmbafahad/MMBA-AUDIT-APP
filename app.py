@@ -255,7 +255,33 @@ def display_prebuilt_criteria_ui():
             'duplicate_enabled': True,
             'round_amount_enabled': True,
             'date_check_enabled': False,
+            'selected_accounts': [],
         }
+    
+    # Account Selection (only if account column is mapped)
+    if 'account' in st.session_state.column_mapping:
+        st.subheader("🏢 Account Filter")
+        
+        # Get unique accounts from the data
+        unique_accounts = st.session_state.prebuilt_processor.get_unique_accounts(
+            st.session_state.data, st.session_state.column_mapping
+        )
+        
+        if unique_accounts:
+            selected_accounts = st.multiselect(
+                "Select specific accounts to analyze (leave empty to analyze all accounts):",
+                options=unique_accounts,
+                default=st.session_state.criteria_config.get('selected_accounts', []),
+                help=f"Found {len(unique_accounts)} unique accounts in your data"
+            )
+            st.session_state.criteria_config['selected_accounts'] = selected_accounts
+            
+            if selected_accounts:
+                st.info(f"Analysis will be limited to {len(selected_accounts)} selected account(s)")
+            else:
+                st.info("Analysis will be applied to all accounts in the dataset")
+        else:
+            st.warning("No account data found in the mapped account column")
     
     col1, col2 = st.columns(2)
     

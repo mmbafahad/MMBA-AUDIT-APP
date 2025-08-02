@@ -296,7 +296,7 @@ def apply_sampling_criteria(criteria_text):
                     
                     # Show individual conditions for debugging
                     for i, condition in enumerate(parsed_criteria['logical_structure']['conditions']):
-                        st.info(f"Condition {i+1}: Type={condition.get('type')}, Filters={len(condition.get('filters', []))}, Text={condition.get('text', '')[:50]}...")
+                        st.info(f"Condition {i+1}: Type={condition.get('type')}, Filters={len(condition.get('filters', []))}, Sample Size={condition.get('sample_size')}, Text={condition.get('text', '')[:50]}...")
                 
                 # Apply complex criteria
                 sampled_data = st.session_state.complex_parser.apply_complex_criteria(

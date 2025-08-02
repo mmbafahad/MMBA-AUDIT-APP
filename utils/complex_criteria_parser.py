@@ -359,10 +359,12 @@ class ComplexCriteriaParser:
         
         # Apply first condition
         result_df = self._apply_simple_condition(df, conditions[0], column_mapping)
+        print(f"DEBUG: First condition returned {len(result_df)} results")
         
         # Apply subsequent conditions with operators
         for i, condition in enumerate(conditions[1:]):
             condition_result = self._apply_simple_condition(df, condition, column_mapping)
+            print(f"DEBUG: Condition {i+2} returned {len(condition_result)} results")
             
             if i < len(operators):
                 operator = operators[i]
@@ -370,11 +372,13 @@ class ComplexCriteriaParser:
                     # Intersection of results
                     common_indices = result_df.index.intersection(condition_result.index)
                     result_df = result_df.loc[common_indices]
+                    print(f"DEBUG: After AND operation: {len(result_df)} results")
                 elif operator == 'OR':
                     # Union of results - combine both DataFrames and remove duplicates
                     # Do NOT reset index to preserve original ordering for potential sorting
                     combined_df = pd.concat([result_df, condition_result], ignore_index=False)
                     result_df = combined_df.drop_duplicates()
+                    print(f"DEBUG: After OR operation: {len(result_df)} results")
         
         # For OR operations, do NOT apply overall sample size - each condition should have applied its own
         # Only apply sorting if needed

@@ -61,7 +61,7 @@ class CriteriaInterpreter:
                 parsed['sort_order'] = 'asc'
         
         # Parse description-related criteria
-        if 'description' in criteria_types:
+        if 'description' in criteria_types or parsed['text_patterns']:
             parsed['description_filters'] = self.parse_description_criteria(criteria_text, keywords)
             parsed['risk_analysis'] = True  # Always enable risk analysis for description-based criteria
         

@@ -100,7 +100,8 @@ class NLPProcessor:
             criteria_types.append('amount')
         
         # Description-based criteria
-        if keywords['descriptions'] or keywords['suspicious'] or keywords['empty']:
+        if (keywords['descriptions'] or keywords['suspicious'] or keywords['empty'] or
+            any(word in text.lower() for word in ['description', 'desc', 'narrative', 'memo', 'comment'])):
             criteria_types.append('description')
         
         # Duplicate detection
@@ -179,8 +180,25 @@ class NLPProcessor:
         quoted_patterns = re.findall(r"'([^']*)'", text)
         patterns.extend(quoted_patterns)
         
-        # Look for words after "containing", "with", "including"
-        containing_patterns = re.findall(r'(?:containing|with|including|like)\s+([a-zA-Z]+)', text.lower())
+        # Look for words after "containing", "with", "including", "like"
+        containing_patterns = re.findall(r'(?:containing|with|including|like)\s+([a-zA-Z0-9]+)', text.lower())
         patterns.extend(containing_patterns)
+        
+        # Look for "description of X" or "descriptions of X" patterns
+        description_of_patterns = re.findall(r'description(?:s)?\s+of\s+([a-zA-Z0-9]+)', text.lower())
+        patterns.extend(description_of_patterns)
+        
+        # Look for "with description X" patterns  
+        with_description_patterns = re.findall(r'with\s+description\s+([a-zA-Z0-9]+)', text.lower())
+        patterns.extend(with_description_patterns)
+        
+        # Look for standalone capitalized words that might be company names (if no other patterns found)
+        if not patterns:
+            # Find capitalized words that are likely company names
+            capitalized_words = re.findall(r'\b([A-Z][a-zA-Z0-9]{2,})\b', text)
+            # Filter out common words
+            common_words = {'Select', 'Find', 'Show', 'Get', 'With', 'Description', 'Transaction', 'Transactions', 'Amount', 'Amounts'}
+            company_names = [word for word in capitalized_words if word not in common_words]
+            patterns.extend(company_names)
         
         return patterns

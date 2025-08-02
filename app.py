@@ -278,9 +278,15 @@ def apply_sampling_criteria(criteria_text):
                 criteria_text, working_column_mapping
             )
             
-            # Debug output for credit-specific queries
+            # Debug output for different query types
             if parsed_criteria.get('transaction_type_filter') == 'credit':
                 st.info(f"🔍 Debug: Detected credit-only query. Sort by: {parsed_criteria.get('sort_by')}, Sample size: {parsed_criteria.get('sample_size')}")
+            
+            if parsed_criteria.get('text_patterns'):
+                st.info(f"🔍 Debug: Found text patterns: {parsed_criteria.get('text_patterns')}")
+                
+            if parsed_criteria.get('description_filters'):
+                st.info(f"🔍 Debug: Description filters: {parsed_criteria.get('description_filters')}")
             
             # Apply criteria to data
             sampled_data = st.session_state.criteria_interpreter.apply_criteria(

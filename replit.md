@@ -1,6 +1,12 @@
 # Overview
 
-This is an Audit Transaction Sampling Tool built with Streamlit that allows auditors to upload transaction data and define sampling criteria using natural language. The application processes CSV/Excel files containing transaction data and applies intelligent filtering based on user-defined criteria to identify suspicious transactions or specific patterns for audit purposes. The tool incorporates NLP capabilities to interpret natural language queries and audit-specific analysis to detect red flags in transaction data.
+This is an Audit Transaction Sampling Tool built with Streamlit that allows auditors to input transaction data (via direct paste or file upload) and define sampling criteria using natural language. The application processes transaction data and applies intelligent filtering based on user-defined criteria to identify suspicious transactions or specific patterns for audit purposes. The tool incorporates NLP capabilities to interpret natural language queries and audit-specific analysis to detect red flags in transaction data.
+
+## Recent Changes (August 2, 2025)
+- Added direct data pasting functionality as primary input method
+- Modified interface to support both pasted data and file upload
+- Enhanced error handling for data processing
+- Updated welcome screen to emphasize natural language criteria input
 
 # User Preferences
 

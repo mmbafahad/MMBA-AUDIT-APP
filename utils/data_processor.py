@@ -35,6 +35,45 @@ class DataProcessor:
         except Exception as e:
             raise Exception(f"Failed to load file: {str(e)}")
     
+    def load_pasted_data(self, pasted_text):
+        """Load and process pasted CSV data"""
+        try:
+            # Clean the pasted text
+            pasted_text = pasted_text.strip()
+            
+            if not pasted_text:
+                raise ValueError("No data provided")
+            
+            # Convert to StringIO for pandas to read
+            data_io = StringIO(pasted_text)
+            
+            # Try to read as CSV
+            try:
+                df = pd.read_csv(data_io)
+            except Exception as e:
+                # Try with different delimiter
+                data_io.seek(0)
+                try:
+                    df = pd.read_csv(data_io, delimiter='\t')
+                except:
+                    # Try semicolon delimiter
+                    data_io.seek(0)
+                    df = pd.read_csv(data_io, delimiter=';')
+            
+            if len(df.columns) < 2:
+                raise ValueError("Data must have at least 2 columns. Please check your format.")
+            
+            if len(df) == 0:
+                raise ValueError("No data rows found. Please include data below the headers.")
+            
+            # Basic data cleaning
+            df = self.clean_data(df)
+            
+            return df
+            
+        except Exception as e:
+            raise Exception(f"Failed to process pasted data: {str(e)}")
+    
     def clean_data(self, df):
         """Perform basic data cleaning"""
         # Remove completely empty rows

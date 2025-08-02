@@ -30,53 +30,81 @@ def main():
     st.title("🔍 Audit Transaction Sampling Tool")
     st.markdown("Upload transaction data and use natural language to define sampling criteria")
     
-    # Sidebar for file upload and column mapping
+    # Sidebar for data input and column mapping
     with st.sidebar:
-        st.header("📁 Data Upload")
-        uploaded_file = st.file_uploader(
-            "Choose a CSV or Excel file",
-            type=['csv', 'xlsx', 'xls'],
-            help="Upload transaction data with 10,000+ records"
+        st.header("📊 Data Input")
+        
+        # Data input methods
+        input_method = st.radio(
+            "Choose input method:",
+            ["Paste Transaction Data", "Upload File"],
+            help="Paste data directly or upload CSV/Excel file"
         )
         
-        if uploaded_file is not None:
-            try:
-                data_processor = DataProcessor()
-                st.session_state.data = data_processor.load_file(uploaded_file)
-                st.success(f"✅ Loaded {len(st.session_state.data):,} transactions")
-                
-                # Column mapping section
-                st.header("🗂️ Column Mapping")
-                st.markdown("Map your columns to standard transaction fields:")
-                
-                columns = st.session_state.data.columns.tolist()
-                
-                # Standard fields mapping
-                standard_fields = {
-                    'amount': 'Transaction Amount',
-                    'description': 'Transaction Description',
-                    'date': 'Transaction Date',
-                    'account': 'Account',
-                    'reference': 'Reference Number',
-                    'type': 'Transaction Type'
-                }
-                
-                for field, label in standard_fields.items():
-                    st.session_state.column_mapping[field] = st.selectbox(
-                        label,
-                        options=['None'] + columns,
-                        key=f"mapping_{field}",
-                        index=0
-                    )
-                
-                # Remove 'None' mappings
-                st.session_state.column_mapping = {
-                    k: v for k, v in st.session_state.column_mapping.items() 
-                    if v != 'None'
-                }
-                
-            except Exception as e:
-                st.error(f"❌ Error loading file: {str(e)}")
+        if input_method == "Paste Transaction Data":
+            st.subheader("📋 Paste Your Transaction Data")
+            st.markdown("Paste your transaction data (CSV format with headers):")
+            
+            pasted_data = st.text_area(
+                "Transaction Data:",
+                height=200,
+                placeholder="Date,Amount,Description,Account\n2024-01-01,1000.00,Office Supplies,Cash\n2024-01-02,2500.00,Suspense Entry,Bank\n...",
+                help="Include column headers in the first row"
+            )
+            
+            if st.button("📥 Process Pasted Data") and pasted_data.strip():
+                try:
+                    data_processor = DataProcessor()
+                    st.session_state.data = data_processor.load_pasted_data(pasted_data)
+                    st.success(f"✅ Loaded {len(st.session_state.data):,} transactions")
+                except Exception as e:
+                    st.error(f"❌ Error processing data: {str(e)}")
+        
+        else:  # Upload File
+            uploaded_file = st.file_uploader(
+                "Choose a CSV or Excel file",
+                type=['csv', 'xlsx', 'xls'],
+                help="Upload transaction data with 10,000+ records"
+            )
+            
+            if uploaded_file is not None:
+                try:
+                    data_processor = DataProcessor()
+                    st.session_state.data = data_processor.load_file(uploaded_file)
+                    st.success(f"✅ Loaded {len(st.session_state.data):,} transactions")
+                except Exception as e:
+                    st.error(f"❌ Error loading file: {str(e)}")
+        
+        # Column mapping section (show only if data is loaded)
+        if st.session_state.data is not None:
+            st.header("🗂️ Column Mapping")
+            st.markdown("Map your columns to standard transaction fields:")
+            
+            columns = st.session_state.data.columns.tolist()
+            
+            # Standard fields mapping
+            standard_fields = {
+                'amount': 'Transaction Amount',
+                'description': 'Transaction Description',
+                'date': 'Transaction Date',
+                'account': 'Account',
+                'reference': 'Reference Number',
+                'type': 'Transaction Type'
+            }
+            
+            for field, label in standard_fields.items():
+                st.session_state.column_mapping[field] = st.selectbox(
+                    label,
+                    options=['None'] + columns,
+                    key=f"mapping_{field}",
+                    index=0
+                )
+            
+            # Remove 'None' mappings
+            st.session_state.column_mapping = {
+                k: v for k, v in st.session_state.column_mapping.items() 
+                if v != 'None'
+            }
     
     # Main content area
     if st.session_state.data is not None:
@@ -130,11 +158,15 @@ def main():
                     numeric_amounts = pd.to_numeric(
                         st.session_state.data[amount_col], 
                         errors='coerce'
-                    )
-                    st.metric("Total Amount", f"${numeric_amounts.sum():,.2f}")
-                    st.metric("Average Amount", f"${numeric_amounts.mean():.2f}")
-                    st.metric("Max Amount", f"${numeric_amounts.max():,.2f}")
-                except:
+                    ).dropna()
+                    
+                    if len(numeric_amounts) > 0:
+                        st.metric("Total Amount", f"${numeric_amounts.sum():,.2f}")
+                        st.metric("Average Amount", f"${numeric_amounts.mean():.2f}")
+                        st.metric("Max Amount", f"${numeric_amounts.max():,.2f}")
+                    else:
+                        st.info("Amount column needs numeric values")
+                except Exception:
                     st.info("Amount column needs numeric values")
             
             # Column mapping status
@@ -150,18 +182,25 @@ def main():
         This tool helps auditors efficiently sample transaction data using natural language criteria.
         
         ### Features:
-        - 📁 Upload CSV/Excel files with large transaction datasets
+        - 📋 **Paste transaction data directly** or upload CSV/Excel files
         - 🗂️ Flexible column mapping for different data formats
-        - 🗣️ Natural language criteria input
+        - 🗣️ **Natural language criteria input** - describe what you want in plain English
         - 🔍 Intelligent description analysis for audit red flags
         - 📊 Smart sampling based on ISA and general audit rules
         - 📤 Export functionality for selected samples
         
         ### Get Started:
-        1. Upload your transaction file using the sidebar
-        2. Map your columns to standard transaction fields
-        3. Enter your sampling criteria in plain English
+        1. **Paste your transaction data** in the sidebar or upload a file
+        2. Map your columns to standard transaction fields  
+        3. **Enter your sampling criteria in natural language**
         4. Review and export your selected samples
+        
+        ### Example Natural Language Criteria:
+        - "Select 10 highest value transactions"
+        - "Find transactions with suspicious descriptions"
+        - "Show entries with no description or vague descriptions"
+        - "Get duplicate transactions"
+        - "Select transactions above 50,000"
         """)
 
 def apply_sampling_criteria(criteria_text):
@@ -223,15 +262,18 @@ def apply_sampling_criteria(criteria_text):
                 # Convert to Excel
                 from io import BytesIO
                 buffer = BytesIO()
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    display_data.to_excel(writer, sheet_name='Audit_Sample', index=False)
-                
-                st.download_button(
-                    label="📥 Download as Excel",
-                    data=buffer.getvalue(),
-                    file_name="audit_sample.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                try:
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                        display_data.to_excel(writer, sheet_name='Audit_Sample', index=False)
+                    
+                    st.download_button(
+                        label="📥 Download as Excel",
+                        data=buffer.getvalue(),
+                        file_name="audit_sample.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                except Exception as e:
+                    st.warning("Excel export not available. Use CSV download instead.")
             
             # Analysis summary
             if 'audit_risk_score' in display_data.columns:

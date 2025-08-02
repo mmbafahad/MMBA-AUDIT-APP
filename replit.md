@@ -16,6 +16,17 @@ This is an Audit Transaction Sampling Tool built with Streamlit that allows audi
 - **FIXED**: OR operation duplicate handling - transactions matching multiple conditions now appear only once
 - **FIXED**: Sample size extraction for "X highest/lowest" patterns now works correctly
 - **FIXED**: Complex parser now returns all required fields for compatibility with main application
+- **MAJOR UPDATE**: Added comprehensive prebuilt audit criteria system with:
+  - High-Value Transactions (configurable number, type, threshold)
+  - Missing Description detection
+  - Suspicious Description scanning (ISA keywords)
+  - Duplicate Transaction checks (by reference, amount, or both)
+  - Round Amount detection (multiples of 100, 1000, or custom)
+  - Backdated/Future-Dated transaction detection
+- **NEW**: Dual criteria mode - users can choose between prebuilt criteria or custom natural language
+- **NEW**: Selection reason tracking - each transaction shows why it was selected
+- **NEW**: Combined criteria support - users can apply prebuilt + additional custom criteria
+- **NEW**: Enhanced result display with criteria breakdown and statistics
 
 # User Preferences
 
@@ -38,6 +49,7 @@ Preferred communication style: Simple, everyday language.
   - `AuditAnalyzer`: Audit-specific analysis including red flag detection and suspicious pattern identification
   - `CriteriaInterpreter`: Orchestrates NLP processing and applies business logic for sampling criteria
   - **NEW**: `ComplexCriteriaParser`: Advanced parser for complex criteria with AND/OR logical operators, numerical filtering, text matching, and reference number filtering
+  - **NEW**: `PrebuiltCriteriaProcessor`: Handles standard audit criteria including high-value transactions, duplicate detection, suspicious descriptions, round amounts, and date range validation
 
 ## Data Processing Strategy
 - **File Format Support**: CSV (with multiple encoding fallbacks) and Excel formats

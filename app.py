@@ -8,6 +8,7 @@ from utils.nlp_processor import NLPProcessor
 from utils.audit_analyzer import AuditAnalyzer
 from utils.criteria_interpreter import CriteriaInterpreter
 from utils.complex_criteria_parser import ComplexCriteriaParser
+from utils.prebuilt_criteria import PrebuiltCriteriaProcessor
 
 # Initialize session state
 if 'data' not in st.session_state:
@@ -22,6 +23,8 @@ if 'criteria_interpreter' not in st.session_state:
     st.session_state.criteria_interpreter = CriteriaInterpreter()
 if 'complex_parser' not in st.session_state:
     st.session_state.complex_parser = ComplexCriteriaParser()
+if 'prebuilt_processor' not in st.session_state:
+    st.session_state.prebuilt_processor = PrebuiltCriteriaProcessor(st.session_state.audit_analyzer)
 
 def main():
     st.set_page_config(
@@ -164,39 +167,19 @@ Date       Amount    Description        Account
             st.header("📊 Data Preview")
             st.dataframe(st.session_state.data.head(10), use_container_width=True)
             
-            # Natural language criteria input
+            # Criteria selection mode
             st.header("🗣️ Sampling Criteria")
-            st.markdown("Enter your sampling criteria in natural language:")
             
-            # Example criteria
-            with st.expander("💡 Example Complex Criteria"):
-                st.markdown("**Simple Criteria:**")
-                st.code("Select 15 highest amount transactions")
-                st.code("Find transactions with NashTech in description")
-                st.code("Show transactions with reference 123")
-                
-                st.markdown("**Complex Criteria with AND/OR:**")
-                st.code("15 highest amount transactions AND transactions with NashTech in description")
-                st.code("transactions with reference 123 OR reference 125")
-                st.code("amount > 50000 AND description contains 'misc'")
-                st.code("credit amounts above 25000 OR debit amounts above 30000")
-                
-                st.markdown("**Advanced Examples:**")
-                st.code("10 highest credit amounts AND (description contains 'payment' OR description contains 'transfer')")
-                st.code("transactions with suspicious descriptions OR amount > 100000")
-                st.code("reference 456 OR reference 789 AND amount > 10000")
-            
-            criteria_text = st.text_area(
-                "Enter criteria:",
-                height=100,
-                placeholder="e.g., Select 15 transactions with highest amounts and suspicious descriptions"
+            criteria_mode = st.radio(
+                "Choose criteria mode:",
+                ["Prebuilt Audit Criteria", "Custom Natural Language Criteria"],
+                help="Use prebuilt criteria for standard audit checks or enter custom criteria"
             )
             
-            if st.button("🔍 Apply Sampling Criteria", type="primary"):
-                if criteria_text.strip():
-                    apply_sampling_criteria(criteria_text)
-                else:
-                    st.warning("⚠️ Please enter sampling criteria")
+            if criteria_mode == "Prebuilt Audit Criteria":
+                display_prebuilt_criteria_ui()
+            else:
+                display_custom_criteria_ui()
         
         with col2:
             st.header("📈 Data Summary")
@@ -258,6 +241,303 @@ Date       Amount    Description        Account
         - "Get duplicate transactions"
         - "Select transactions above 50,000"
         """)
+
+def display_prebuilt_criteria_ui():
+    """Display the prebuilt criteria configuration UI"""
+    st.markdown("Configure standard audit criteria automatically applied to your data:")
+    
+    # Initialize criteria config in session state
+    if 'criteria_config' not in st.session_state:
+        st.session_state.criteria_config = {
+            'high_value_enabled': True,
+            'missing_desc_enabled': True,
+            'suspicious_desc_enabled': True,
+            'duplicate_enabled': True,
+            'round_amount_enabled': True,
+            'date_check_enabled': False,
+        }
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🔢 High-Value Transactions")
+        st.session_state.criteria_config['high_value_enabled'] = st.checkbox(
+            "Enable high-value transaction check", 
+            value=st.session_state.criteria_config['high_value_enabled']
+        )
+        
+        if st.session_state.criteria_config['high_value_enabled']:
+            num_transactions = st.number_input("Number of transactions:", min_value=1, max_value=100, value=10)
+            transaction_type = st.selectbox("Transaction type:", ["both", "credit", "debit"])
+            threshold_amount = st.number_input("Threshold amount (optional):", min_value=0.0, value=0.0, step=1000.0)
+            
+            st.session_state.criteria_config['high_value_config'] = {
+                'num_transactions': num_transactions,
+                'transaction_type': transaction_type,
+                'threshold_amount': threshold_amount if threshold_amount > 0 else None
+            }
+        
+        st.subheader("📝 Description Checks")
+        st.session_state.criteria_config['missing_desc_enabled'] = st.checkbox(
+            "Missing descriptions", 
+            value=st.session_state.criteria_config['missing_desc_enabled'],
+            help="Automatically detect transactions with empty descriptions"
+        )
+        
+        st.session_state.criteria_config['suspicious_desc_enabled'] = st.checkbox(
+            "Suspicious descriptions", 
+            value=st.session_state.criteria_config['suspicious_desc_enabled'],
+            help="Scan for suspicious keywords like 'adjustment', 'correction', 'reversal', etc."
+        )
+        
+        st.subheader("📅 Date Range Check")
+        st.session_state.criteria_config['date_check_enabled'] = st.checkbox(
+            "Enable date range check", 
+            value=st.session_state.criteria_config['date_check_enabled']
+        )
+        
+        if st.session_state.criteria_config['date_check_enabled']:
+            expected_start = st.date_input("Expected start date:")
+            expected_end = st.date_input("Expected end date:")
+            
+            st.session_state.criteria_config['date_config'] = {
+                'expected_start_date': expected_start,
+                'expected_end_date': expected_end
+            }
+    
+    with col2:
+        st.subheader("🔄 Duplicate Transaction Check")
+        st.session_state.criteria_config['duplicate_enabled'] = st.checkbox(
+            "Enable duplicate check", 
+            value=st.session_state.criteria_config['duplicate_enabled']
+        )
+        
+        if st.session_state.criteria_config['duplicate_enabled']:
+            duplicate_options = st.multiselect(
+                "Check duplicates by:",
+                ["reference", "amount"],
+                default=["reference", "amount"],
+                help="Choose which fields to use for duplicate detection"
+            )
+            
+            st.session_state.criteria_config['duplicate_config'] = {
+                'duplicate_by': duplicate_options
+            }
+        
+        st.subheader("⭕ Round Amount Check")
+        st.session_state.criteria_config['round_amount_enabled'] = st.checkbox(
+            "Enable round amount check", 
+            value=st.session_state.criteria_config['round_amount_enabled']
+        )
+        
+        if st.session_state.criteria_config['round_amount_enabled']:
+            roundness_type = st.selectbox("Check for multiples of:", ["100", "1000", "custom"])
+            
+            if roundness_type == "custom":
+                custom_threshold = st.number_input("Custom threshold:", min_value=1, value=500)
+                st.session_state.criteria_config['round_amount_config'] = {
+                    'roundness_type': 'custom',
+                    'custom_threshold': custom_threshold
+                }
+            else:
+                st.session_state.criteria_config['round_amount_config'] = {
+                    'roundness_type': roundness_type
+                }
+    
+    # Apply button for prebuilt criteria
+    if st.button("🔍 Apply Prebuilt Criteria", type="primary"):
+        apply_prebuilt_criteria()
+    
+    # Add custom criteria option
+    st.markdown("---")
+    st.subheader("➕ Additional Custom Criteria")
+    st.markdown("Add custom criteria in addition to the prebuilt ones:")
+    
+    additional_criteria = st.text_area(
+        "Additional criteria (optional):",
+        height=80,
+        placeholder="e.g., transactions with 'transfer' in description OR amount > 75000"
+    )
+    
+    if st.button("🔍 Apply Prebuilt + Custom Criteria", type="secondary"):
+        apply_prebuilt_criteria(additional_criteria.strip() if additional_criteria.strip() else None)
+
+def display_custom_criteria_ui():
+    """Display the custom natural language criteria UI"""
+    st.markdown("Enter your sampling criteria in natural language:")
+    
+    # Example criteria
+    with st.expander("💡 Example Complex Criteria"):
+        st.markdown("**Simple Criteria:**")
+        st.code("Select 15 highest amount transactions")
+        st.code("Find transactions with NashTech in description")
+        st.code("Show transactions with reference 123")
+        
+        st.markdown("**Complex Criteria with AND/OR:**")
+        st.code("15 highest amount transactions AND transactions with NashTech in description")
+        st.code("transactions with reference 123 OR reference 125")
+        st.code("amount > 50000 AND description contains 'misc'")
+        st.code("credit amounts above 25000 OR debit amounts above 30000")
+        
+        st.markdown("**Advanced Examples:**")
+        st.code("10 highest credit amounts AND (description contains 'payment' OR description contains 'transfer')")
+        st.code("transactions with suspicious descriptions OR amount > 100000")
+        st.code("reference 456 OR reference 789 AND amount > 10000")
+    
+    criteria_text = st.text_area(
+        "Enter criteria:",
+        height=100,
+        placeholder="e.g., Select 15 transactions with highest amounts and suspicious descriptions"
+    )
+    
+    if st.button("🔍 Apply Custom Criteria", type="primary"):
+        if criteria_text.strip():
+            apply_sampling_criteria(criteria_text)
+        else:
+            st.warning("Please enter sampling criteria")
+
+def apply_prebuilt_criteria(additional_criteria=None):
+    """Apply prebuilt audit criteria with optional additional custom criteria"""
+    try:
+        with st.spinner("Processing prebuilt audit criteria..."):
+            # Process debit/credit columns if mapped
+            processed_data = st.session_state.data.copy()
+            working_column_mapping = st.session_state.column_mapping.copy()
+            
+            if 'debit' in st.session_state.column_mapping and 'credit' in st.session_state.column_mapping:
+                data_processor = DataProcessor()
+                processed_data, net_amount_col = data_processor.process_debit_credit_columns(
+                    processed_data,
+                    st.session_state.column_mapping['debit'],
+                    st.session_state.column_mapping['credit']
+                )
+                if net_amount_col:
+                    working_column_mapping['amount'] = net_amount_col
+                    st.info("Using combined debit/credit amounts for analysis")
+            
+            # Apply prebuilt criteria
+            prebuilt_results, criteria_stats = st.session_state.prebuilt_processor.apply_all_prebuilt_criteria(
+                processed_data, working_column_mapping, st.session_state.criteria_config
+            )
+            
+            # Apply additional custom criteria if provided
+            if additional_criteria:
+                st.info(f"Processing additional custom criteria: {additional_criteria}")
+                
+                # Determine if additional criteria is complex
+                is_complex = any(op in additional_criteria.upper() for op in [' AND ', ' OR '])
+                
+                if is_complex:
+                    parsed_criteria = st.session_state.complex_parser.parse_complex_criteria(
+                        additional_criteria, working_column_mapping
+                    )
+                    custom_results = st.session_state.complex_parser.apply_complex_criteria(
+                        processed_data, parsed_criteria, working_column_mapping
+                    )
+                else:
+                    parsed_criteria = st.session_state.criteria_interpreter.parse_criteria(
+                        additional_criteria, working_column_mapping
+                    )
+                    custom_results = st.session_state.criteria_interpreter.apply_criteria(
+                        processed_data, parsed_criteria, working_column_mapping
+                    )
+                
+                # Combine prebuilt and custom results
+                if len(prebuilt_results) > 0 and len(custom_results) > 0:
+                    # Add selection reason for custom results if not present
+                    if 'selection_reason' not in custom_results.columns:
+                        custom_results['selection_reason'] = f"Custom Criteria: {additional_criteria}"
+                    
+                    # Combine and remove duplicates while preserving reasons
+                    combined_results = pd.concat([prebuilt_results, custom_results], ignore_index=True)
+                    
+                    # Group by all columns except selection_reason and combine reasons
+                    group_columns = [col for col in combined_results.columns if col != 'selection_reason']
+                    def combine_reasons(group):
+                        reasons = group['selection_reason'].unique()
+                        return ' | '.join(reasons)
+                    
+                    final_results = combined_results.groupby(group_columns, as_index=False).agg({
+                        'selection_reason': combine_reasons
+                    })
+                elif len(custom_results) > 0:
+                    final_results = custom_results
+                    if 'selection_reason' not in final_results.columns:
+                        final_results['selection_reason'] = f"Custom Criteria: {additional_criteria}"
+                else:
+                    final_results = prebuilt_results
+            else:
+                final_results = prebuilt_results
+            
+            # Display results
+            display_results(final_results, criteria_stats, "Prebuilt Audit Criteria")
+            
+    except Exception as e:
+        st.error(f"Error applying prebuilt criteria: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
+
+def display_results(sampled_data, criteria_stats=None, criteria_type="Custom Criteria"):
+    """Display sampling results with statistics and export options"""
+    if len(sampled_data) == 0:
+        st.warning("No transactions match your criteria")
+        return
+    
+    # Results header with statistics
+    st.success(f"Found {len(sampled_data):,} transactions matching your criteria")
+    
+    # Criteria interpretation info
+    if criteria_stats:
+        st.subheader("Criteria Breakdown")
+        for criteria_name, count in criteria_stats.items():
+            st.metric(criteria_name, f"{count:,} transactions")
+    
+    # Display results
+    st.subheader("Selected Transactions")
+    
+    # Show selection reasons if available
+    if 'selection_reason' in sampled_data.columns:
+        # Group by selection reason to show breakdown
+        reason_counts = sampled_data['selection_reason'].value_counts()
+        st.subheader("Selection Reasons")
+        for reason, count in reason_counts.items():
+            st.write(f"• **{reason}**: {count:,} transactions")
+    
+    # Display data with enhanced formatting
+    display_columns = [col for col in sampled_data.columns if col != 'selection_reason']
+    if 'selection_reason' in sampled_data.columns:
+        display_columns.append('selection_reason')
+    
+    st.dataframe(
+        sampled_data[display_columns],
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Export functionality
+    st.subheader("Export Results")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # CSV export
+        csv_data = sampled_data.to_csv(index=False)
+        st.download_button(
+            label="📄 Download as CSV",
+            data=csv_data,
+            file_name=f"audit_sample_{criteria_type.lower().replace(' ', '_')}.csv",
+            mime="text/csv"
+        )
+    
+    with col2:
+        # JSON export for detailed analysis
+        json_data = sampled_data.to_json(orient='records', indent=2)
+        st.download_button(
+            label="📋 Download as JSON",
+            data=json_data,
+            file_name=f"audit_sample_{criteria_type.lower().replace(' ', '_')}.json",
+            mime="application/json"
+        )
 
 def apply_sampling_criteria(criteria_text):
     """Apply the natural language sampling criteria to the data"""
@@ -331,80 +611,24 @@ def apply_sampling_criteria(criteria_text):
                         sampled_data, description_col
                     )
         
-        # Display results
-        st.header("🎯 Sampling Results")
+        # Add selection reason if not present
+        if 'selection_reason' not in sampled_data.columns and len(sampled_data) > 0:
+            sampled_data['selection_reason'] = f"Custom Criteria: {criteria_text}"
         
+        # Display results using standardized function
+        st.header("🎯 Sampling Results")
+        display_results(sampled_data, None, "Custom Criteria")
+        
+        # Show criteria interpretation
         if len(sampled_data) > 0:
-            st.success(f"✅ Found {len(sampled_data)} transactions matching your criteria")
-            
-            # Show criteria interpretation
             st.subheader("🧠 Criteria Interpretation")
             interpretation_text = st.session_state.criteria_interpreter.get_interpretation_summary(parsed_criteria)
             st.info(interpretation_text)
             
-            # Display sampled data
-            st.subheader("📋 Selected Transactions")
-            
-            # Ensure selection reason is always available
-            display_data = sampled_data.copy()
-            if 'selection_reason' not in display_data.columns:
-                display_data['selection_reason'] = 'Selected based on criteria match'
-            
-            # Reorder columns to put selection reason first for visibility
-            cols = display_data.columns.tolist()
-            if 'selection_reason' in cols:
-                cols.remove('selection_reason')
-                cols = ['selection_reason'] + cols
-                display_data = display_data[cols]
-            
-            st.dataframe(display_data, use_container_width=True)
-            
-            # Export functionality
-            col1, col2 = st.columns(2)
-            with col1:
-                csv = display_data.to_csv(index=False)
-                st.download_button(
-                    label="📥 Download as CSV",
-                    data=csv,
-                    file_name="audit_sample.csv",
-                    mime="text/csv"
-                )
-            
-            with col2:
-                # Convert to Excel
-                from io import BytesIO
-                buffer = BytesIO()
-                try:
-                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        display_data.to_excel(writer, sheet_name='Audit_Sample', index=False)
-                    
-                    st.download_button(
-                        label="📥 Download as Excel",
-                        data=buffer.getvalue(),
-                        file_name="audit_sample.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                except Exception as e:
-                    st.warning("Excel export not available. Use CSV download instead.")
-            
-            # Analysis summary
-            if 'audit_risk_score' in display_data.columns:
-                st.subheader("⚠️ Risk Analysis Summary")
-                high_risk = len(display_data[display_data['audit_risk_score'] >= 0.7])
-                medium_risk = len(display_data[(display_data['audit_risk_score'] >= 0.4) & (display_data['audit_risk_score'] < 0.7)])
-                low_risk = len(display_data[display_data['audit_risk_score'] < 0.4])
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("🔴 High Risk", high_risk)
-                with col2:
-                    st.metric("🟡 Medium Risk", medium_risk)
-                with col3:
-                    st.metric("🟢 Low Risk", low_risk)
-        else:
-            st.warning("⚠️ No transactions found matching your criteria. Try adjusting your criteria.")
-            
     except Exception as e:
+        st.error(f"❌ Error processing criteria: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
         st.error(f"❌ Error processing criteria: {str(e)}")
         st.error("Please check your criteria format and try again.")
 

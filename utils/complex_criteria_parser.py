@@ -372,19 +372,22 @@ class ComplexCriteriaParser:
                     result_df = result_df.loc[common_indices]
                 elif operator == 'OR':
                     # Union of results - combine both DataFrames and remove duplicates
+                    # Do NOT reset index to preserve original ordering for potential sorting
                     combined_df = pd.concat([result_df, condition_result], ignore_index=False)
-                    result_df = combined_df.drop_duplicates().reset_index(drop=True)
+                    result_df = combined_df.drop_duplicates()
         
-        # Apply overall sorting and sample size
-        if parsed_criteria['sort_by'] and len(result_df) > 0:
+        # For OR operations, do NOT apply overall sample size - each condition should have applied its own
+        # Only apply sorting if needed
+        if parsed_criteria['sort_by'] and len(result_df) > 0 and 'AND' in operators:
+            # Only sort for AND operations where we want to apply overall criteria
             sort_column = self._get_sort_column(parsed_criteria['sort_by'], column_mapping, result_df)
             if sort_column and sort_column in result_df.columns:
                 ascending = parsed_criteria['sort_order'] == 'asc'
                 result_df = result_df.sort_values(sort_column, ascending=ascending)
-        
-        # Apply sample size
-        if parsed_criteria['sample_size'] and len(result_df) > parsed_criteria['sample_size']:
-            result_df = result_df.head(parsed_criteria['sample_size'])
+                
+            # Apply sample size only for AND operations
+            if parsed_criteria['sample_size'] and len(result_df) > parsed_criteria['sample_size']:
+                result_df = result_df.head(parsed_criteria['sample_size'])
         
         return result_df
     
@@ -405,6 +408,14 @@ class ComplexCriteriaParser:
         # Apply sample size for this condition
         if condition.get('sample_size') and len(result_df) > condition['sample_size']:
             result_df = result_df.head(condition['sample_size'])
+        
+        # Add selection reason for clarity
+        if 'selection_reason' not in result_df.columns and len(result_df) > 0:
+            if condition.get('sample_size'):
+                reason = f"Selected by: {condition.get('text', 'condition')} (limit: {condition['sample_size']})"
+            else:
+                reason = f"Selected by: {condition.get('text', 'condition')}"
+            result_df['selection_reason'] = reason
         
         return result_df
     

@@ -43,22 +43,65 @@ def main():
         
         if input_method == "Paste Transaction Data":
             st.subheader("📋 Paste Your Transaction Data")
-            st.markdown("Paste your transaction data (CSV format with headers):")
+            st.markdown("""
+            **Instructions:**
+            1. Copy data directly from Excel, accounting software, or CSV file
+            2. Include column headers in the first row
+            3. The tool supports tab, comma, or space-separated data
+            """)
+            
+            with st.expander("💡 Supported Data Formats"):
+                st.code("""
+Tab-separated (Excel copy-paste):
+Date    Amount  Description     Account
+2024-01-01      1000.00 Office Supplies Cash
+2024-01-02      2500.00 Suspense Entry  Bank
+
+Comma-separated:
+Date,Amount,Description,Account
+2024-01-01,1000.00,Office Supplies,Cash
+2024-01-02,2500.00,Suspense Entry,Bank
+
+Fixed-width (accounting reports):
+Date       Amount    Description        Account
+2024-01-01  1000.00  Office Supplies   Cash
+2024-01-02  2500.00  Suspense Entry    Bank
+                """)
             
             pasted_data = st.text_area(
                 "Transaction Data:",
-                height=200,
-                placeholder="Date,Amount,Description,Account\n2024-01-01,1000.00,Office Supplies,Cash\n2024-01-02,2500.00,Suspense Entry,Bank\n...",
-                help="Include column headers in the first row"
+                height=300,
+                placeholder="Paste your transaction data here...\n\nTip: Copy directly from Excel or your accounting system",
+                help="Paste data with headers - supports multiple formats"
             )
             
             if st.button("📥 Process Pasted Data") and pasted_data.strip():
                 try:
                     data_processor = DataProcessor()
                     st.session_state.data = data_processor.load_pasted_data(pasted_data)
-                    st.success(f"✅ Loaded {len(st.session_state.data):,} transactions")
+                    st.success(f"✅ Loaded {len(st.session_state.data):,} transactions with {len(st.session_state.data.columns)} columns")
+                    
+                    # Show a preview of the loaded data
+                    st.subheader("📊 Data Preview")
+                    st.dataframe(st.session_state.data.head(), use_container_width=True)
+                    
                 except Exception as e:
                     st.error(f"❌ Error processing data: {str(e)}")
+                    
+                    # Show debug information
+                    with st.expander("🔍 Debug Information"):
+                        lines = pasted_data.split('\n')[:5]  # Show first 5 lines
+                        st.text("First few lines of your data:")
+                        for i, line in enumerate(lines):
+                            st.code(f"Line {i+1}: {repr(line)}")
+                        
+                        st.markdown("""
+                        **Troubleshooting Tips:**
+                        - Ensure your data has column headers in the first row
+                        - Check that columns are separated by tabs, commas, or consistent spacing
+                        - Try copying smaller sections if the data is very large
+                        - Remove any extra formatting or merged cells from Excel before copying
+                        """)
         
         else:  # Upload File
             uploaded_file = st.file_uploader(

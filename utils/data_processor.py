@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 from io import StringIO
 import streamlit as st
 
@@ -36,7 +37,7 @@ class DataProcessor:
             raise Exception(f"Failed to load file: {str(e)}")
     
     def load_pasted_data(self, pasted_text):
-        """Load and process pasted CSV data"""
+        """Load and process pasted CSV data with enhanced parsing for Excel-copied data"""
         try:
             # Clean the pasted text
             pasted_text = pasted_text.strip()
@@ -44,32 +45,84 @@ class DataProcessor:
             if not pasted_text:
                 raise ValueError("No data provided")
             
-            # Convert to StringIO for pandas to read
-            data_io = StringIO(pasted_text)
+            # Split into lines and detect the data structure
+            lines = pasted_text.split('\n')
             
-            # Try to read as CSV
+            # Remove empty lines
+            lines = [line.strip() for line in lines if line.strip()]
+            
+            if len(lines) < 2:
+                raise ValueError("Data must have at least a header row and one data row.")
+            
+            # Try different parsing approaches
+            df = None
+            
+            # Method 1: Try tab-separated (most common from Excel copy-paste)
             try:
-                df = pd.read_csv(data_io)
-            except Exception as e:
-                # Try with different delimiter
-                data_io.seek(0)
-                try:
-                    df = pd.read_csv(data_io, delimiter='\t')
-                except:
-                    # Try semicolon delimiter
-                    data_io.seek(0)
-                    df = pd.read_csv(data_io, delimiter=';')
+                data_io = StringIO(pasted_text)
+                df = pd.read_csv(data_io, delimiter='\t', skipinitialspace=True)
+                if len(df.columns) >= 2 and len(df) > 0:
+                    # Check if we have meaningful data
+                    non_empty_cols = sum(1 for col in df.columns if not df[col].isna().all())
+                    if non_empty_cols >= 2:
+                        return self.clean_data(df)
+            except Exception:
+                pass
             
-            if len(df.columns) < 2:
-                raise ValueError("Data must have at least 2 columns. Please check your format.")
+            # Method 2: Try comma-separated
+            try:
+                data_io = StringIO(pasted_text)
+                df = pd.read_csv(data_io, delimiter=',', skipinitialspace=True)
+                if len(df.columns) >= 2 and len(df) > 0:
+                    non_empty_cols = sum(1 for col in df.columns if not df[col].isna().all())
+                    if non_empty_cols >= 2:
+                        return self.clean_data(df)
+            except Exception:
+                pass
             
-            if len(df) == 0:
-                raise ValueError("No data rows found. Please include data below the headers.")
+            # Method 3: Try semicolon-separated
+            try:
+                data_io = StringIO(pasted_text)
+                df = pd.read_csv(data_io, delimiter=';', skipinitialspace=True)
+                if len(df.columns) >= 2 and len(df) > 0:
+                    non_empty_cols = sum(1 for col in df.columns if not df[col].isna().all())
+                    if non_empty_cols >= 2:
+                        return self.clean_data(df)
+            except Exception:
+                pass
             
-            # Basic data cleaning
-            df = self.clean_data(df)
+            # Method 4: Try to detect multiple spaces as delimiter (common in formatted reports)
+            try:
+                # Replace multiple spaces with tabs
+                processed_text = re.sub(r'\s{2,}', '\t', pasted_text)
+                data_io = StringIO(processed_text)
+                df = pd.read_csv(data_io, delimiter='\t', skipinitialspace=True)
+                if len(df.columns) >= 2 and len(df) > 0:
+                    non_empty_cols = sum(1 for col in df.columns if not df[col].isna().all())
+                    if non_empty_cols >= 2:
+                        return self.clean_data(df)
+            except Exception:
+                pass
             
-            return df
+            # Method 5: Try fixed-width parsing for highly structured data
+            try:
+                df = pd.read_fwf(StringIO(pasted_text), skipinitialspace=True)
+                if len(df.columns) >= 2 and len(df) > 0:
+                    non_empty_cols = sum(1 for col in df.columns if not df[col].isna().all())
+                    if non_empty_cols >= 2:
+                        return self.clean_data(df)
+            except Exception:
+                pass
+            
+            # If all methods failed, provide helpful error message
+            raise ValueError("""
+            Could not parse the pasted data. Please ensure your data:
+            1. Has column headers in the first row
+            2. Uses consistent delimiters (tabs, commas, or spaces)
+            3. Has at least 2 columns and 1 data row
+            
+            Tip: Copy data directly from Excel or save as CSV and paste the content.
+            """)
             
         except Exception as e:
             raise Exception(f"Failed to process pasted data: {str(e)}")

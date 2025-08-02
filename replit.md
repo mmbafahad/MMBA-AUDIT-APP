@@ -1,0 +1,60 @@
+# Overview
+
+This is an Audit Transaction Sampling Tool built with Streamlit that allows auditors to upload transaction data and define sampling criteria using natural language. The application processes CSV/Excel files containing transaction data and applies intelligent filtering based on user-defined criteria to identify suspicious transactions or specific patterns for audit purposes. The tool incorporates NLP capabilities to interpret natural language queries and audit-specific analysis to detect red flags in transaction data.
+
+# User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+# System Architecture
+
+## Frontend Architecture
+- **Framework**: Streamlit web application providing an interactive dashboard interface
+- **Layout**: Wide layout with sidebar for file upload and main area for data analysis
+- **State Management**: Streamlit session state to persist uploaded data, column mappings, and processor instances across user interactions
+- **File Upload**: Support for CSV and Excel files with automatic format detection and encoding handling
+
+## Backend Architecture
+- **Modular Design**: Utility classes organized in separate modules for specific functionalities
+- **Data Processing Pipeline**: Sequential processing from file upload → data cleaning → column mapping → criteria interpretation → analysis
+- **Core Components**:
+  - `DataProcessor`: Handles file loading, format detection, and basic data cleaning
+  - `NLPProcessor`: Natural language processing for criteria interpretation using NLTK and spaCy
+  - `AuditAnalyzer`: Audit-specific analysis including red flag detection and suspicious pattern identification
+  - `CriteriaInterpreter`: Orchestrates NLP processing and applies business logic for sampling criteria
+
+## Data Processing Strategy
+- **File Format Support**: CSV (with multiple encoding fallbacks) and Excel formats
+- **Data Cleaning**: Automatic removal of empty rows, whitespace trimming, and null value standardization
+- **Column Mapping**: Dynamic mapping system to standardize transaction fields across different data sources
+- **Memory Management**: Pandas DataFrames for efficient data manipulation of large transaction datasets
+
+## NLP and Analysis Engine
+- **Text Processing**: NLTK for tokenization, stopword removal, and basic text analysis
+- **Advanced NLP**: Optional spaCy integration for more sophisticated language understanding
+- **Pattern Recognition**: Regex-based pattern matching for audit red flags and suspicious transaction descriptions
+- **Criteria Parsing**: Natural language interpretation to convert user queries into structured filtering parameters
+
+# External Dependencies
+
+## Core Libraries
+- **Streamlit**: Web application framework for the user interface
+- **Pandas**: Data manipulation and analysis library for transaction processing
+- **NumPy**: Numerical computing support for data operations
+
+## NLP Libraries
+- **NLTK**: Natural Language Toolkit for text processing, tokenization, and stopword removal
+- **spaCy**: Advanced NLP library for language understanding (optional fallback implementation)
+
+## File Processing
+- **openpyxl/xlrd**: Excel file reading capabilities through pandas
+- **csv**: Built-in CSV processing with encoding detection
+
+## Python Standard Library
+- **re**: Regular expressions for pattern matching in transaction descriptions
+- **io**: String and file I/O operations for data processing
+- **json**: Data serialization for configuration and results
+
+## Development Dependencies
+- Standard Python libraries for string manipulation, file handling, and data structures
+- No external databases or APIs required - operates entirely on uploaded file data

@@ -13,6 +13,9 @@ This is an Audit Transaction Sampling Tool built with Streamlit that allows audi
 - **NEW**: Added reference number filtering (e.g., "transactions with reference 123, 125")
 - Fixed credit-only and debit-only transaction filtering
 - Enhanced suspicious description detection using ISA audit standards
+- **FIXED**: OR operation duplicate handling - transactions matching multiple conditions now appear only once
+- **FIXED**: Sample size extraction for "X highest/lowest" patterns now works correctly
+- **FIXED**: Complex parser now returns all required fields for compatibility with main application
 
 # User Preferences
 

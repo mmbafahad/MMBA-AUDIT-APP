@@ -359,12 +359,9 @@ class ComplexCriteriaParser:
         
         # Apply first condition
         result_df = self._apply_simple_condition(df, conditions[0], column_mapping)
-        print(f"DEBUG: First condition returned {len(result_df)} results (sample_size: {conditions[0].get('sample_size')})")
-        
         # Apply subsequent conditions with operators
         for i, condition in enumerate(conditions[1:]):
             condition_result = self._apply_simple_condition(df, condition, column_mapping)
-            print(f"DEBUG: Condition {i+2} returned {len(condition_result)} results (sample_size: {condition.get('sample_size')})")
             
             if i < len(operators):
                 operator = operators[i]
@@ -372,13 +369,21 @@ class ComplexCriteriaParser:
                     # Intersection of results
                     common_indices = result_df.index.intersection(condition_result.index)
                     result_df = result_df.loc[common_indices]
-                    print(f"DEBUG: After AND operation: {len(result_df)} results")
+
                 elif operator == 'OR':
-                    # Union of results - combine both DataFrames and remove duplicates
-                    # Do NOT reset index to preserve original ordering for potential sorting
+                    # Union of results - combine both DataFrames and remove duplicates properly
+                    # Use index-based deduplication to handle cases where same row appears in both conditions
                     combined_df = pd.concat([result_df, condition_result], ignore_index=False)
-                    result_df = combined_df.drop_duplicates()
-                    print(f"DEBUG: After OR operation: {len(result_df)} results")
+                    
+                    # Remove duplicates based on the original DataFrame index
+                    result_df = combined_df.groupby(level=0).first()
+                    
+                    # Update selection reasons for transactions that match both conditions
+                    duplicate_indices = result_df.index[result_df.index.duplicated()]
+                    if len(duplicate_indices) > 0:
+                        result_df.loc[duplicate_indices, 'selection_reason'] = 'Selected by: Multiple conditions'
+                    
+
         
         # For OR operations, do NOT apply overall sample size - each condition should have applied its own
         # Only apply sorting if needed

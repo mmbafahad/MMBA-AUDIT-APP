@@ -242,3 +242,33 @@ class DataProcessor:
         df[f'{column_name}_parsed'] = pd.to_datetime(df[column_name], errors='coerce')
         
         return df
+    
+    def process_debit_credit_columns(self, df, debit_col, credit_col):
+        """Process debit and credit columns into a single amount column"""
+        if debit_col not in df.columns or credit_col not in df.columns:
+            return df, None
+        
+        df = df.copy()
+        
+        # Clean and convert debit column
+        debit_amounts = pd.to_numeric(
+            df[debit_col].astype(str).str.replace(r'[,$£€¥()]', '', regex=True),
+            errors='coerce'
+        ).fillna(0)
+        
+        # Clean and convert credit column  
+        credit_amounts = pd.to_numeric(
+            df[credit_col].astype(str).str.replace(r'[,$£€¥()]', '', regex=True),
+            errors='coerce'
+        ).fillna(0)
+        
+        # Create net amount column (debit positive, credit negative)
+        df['net_amount'] = debit_amounts - credit_amounts
+        
+        # Create transaction type based on which column has value
+        df['transaction_type'] = ''
+        df.loc[debit_amounts > 0, 'transaction_type'] = 'Debit'
+        df.loc[credit_amounts > 0, 'transaction_type'] = 'Credit'
+        df.loc[(debit_amounts > 0) & (credit_amounts > 0), 'transaction_type'] = 'Both'
+        
+        return df, 'net_amount'

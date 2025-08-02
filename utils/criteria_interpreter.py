@@ -188,10 +188,19 @@ class CriteriaInterpreter:
             if sort_column in result_df.columns:
                 ascending = parsed_criteria['sort_order'] == 'asc'
                 result_df = result_df.sort_values(sort_column, ascending=ascending)
+                
+                # Add selection reason for sorted results
+                if 'selection_reason' not in result_df.columns:
+                    order_desc = 'highest' if not ascending else 'lowest'
+                    result_df['selection_reason'] = f'Selected based on {order_desc} {parsed_criteria["sort_by"]} values'
         
         # Apply sample size limit
         if parsed_criteria['sample_size'] and parsed_criteria['sample_size'] > 0:
             result_df = result_df.head(parsed_criteria['sample_size'])
+            
+            # Update selection reason to include sample size
+            if 'selection_reason' in result_df.columns:
+                result_df['selection_reason'] = result_df['selection_reason'] + f' (top {parsed_criteria["sample_size"]})'
         
         # If no specific filters but risk analysis was requested, return high-risk transactions
         if (not any([parsed_criteria['amount_filters'], parsed_criteria['description_filters'],
@@ -209,34 +218,57 @@ class CriteriaInterpreter:
     
     def apply_amount_filters(self, df, filters, amount_column):
         """Apply amount-based filters"""
-        # Ensure numeric column exists
-        if f'{amount_column}_numeric' not in df.columns:
-            df = self.audit_analyzer.analyze_amounts(df, amount_column)
-        
-        numeric_column = f'{amount_column}_numeric'
-        if numeric_column not in df.columns:
-            return df
+        # Handle special case for net_amount (debit/credit processing)
+        if amount_column == 'net_amount' and amount_column in df.columns:
+            numeric_column = amount_column
+        else:
+            # Ensure numeric column exists
+            if f'{amount_column}_numeric' not in df.columns:
+                df = self.audit_analyzer.analyze_amounts(df, amount_column)
+            
+            numeric_column = f'{amount_column}_numeric'
+            if numeric_column not in df.columns:
+                return df
         
         mask = pd.Series([True] * len(df), index=df.index)
+        applied_filters = []
         
         for filter_item in filters:
             operator = filter_item['operator']
             value = filter_item['value']
             
             if operator == 'greater_than':
-                mask &= df[numeric_column] > value
+                filter_mask = df[numeric_column] > value
+                mask &= filter_mask
+                applied_filters.append(f'Amount > {value:,.2f}')
             elif operator == 'less_than':
-                mask &= df[numeric_column] < value
+                filter_mask = df[numeric_column] < value
+                mask &= filter_mask
+                applied_filters.append(f'Amount < {value:,.2f}')
             elif operator == 'equal_to':
-                mask &= df[numeric_column] == value
+                filter_mask = df[numeric_column] == value
+                mask &= filter_mask
+                applied_filters.append(f'Amount = {value:,.2f}')
             elif operator == 'round_numbers':
                 # Check for round numbers
                 round_mask = df[numeric_column].apply(
                     lambda x: self.audit_analyzer.is_round_number(x) if pd.notna(x) else False
                 )
                 mask &= round_mask
+                applied_filters.append('Round number amounts')
         
-        return df[mask]
+        filtered_df = df[mask].copy()
+        
+        # Add selection reason for amount filters
+        if len(applied_filters) > 0 and len(filtered_df) > 0:
+            if 'selection_reason' not in filtered_df.columns:
+                filtered_df['selection_reason'] = ''
+            
+            filter_reason = 'Amount criteria: ' + '; '.join(applied_filters)
+            filtered_df['selection_reason'] = filtered_df['selection_reason'].astype(str) + '; ' + filter_reason
+            filtered_df['selection_reason'] = filtered_df['selection_reason'].str.strip('; ')
+        
+        return filtered_df
     
     def apply_description_filters(self, df, filters, description_column):
         """Apply description-based filters"""

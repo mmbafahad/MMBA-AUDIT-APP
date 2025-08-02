@@ -127,7 +127,9 @@ Date       Amount    Description        Account
             
             # Standard fields mapping
             standard_fields = {
-                'amount': 'Transaction Amount',
+                'amount': 'Transaction Amount (or leave None if using Debit/Credit)',
+                'debit': 'Debit Amount',
+                'credit': 'Credit Amount', 
                 'description': 'Transaction Description',
                 'date': 'Transaction Date',
                 'account': 'Account',
@@ -250,21 +252,36 @@ def apply_sampling_criteria(criteria_text):
     """Apply the natural language sampling criteria to the data"""
     try:
         with st.spinner("🔄 Processing criteria and analyzing transactions..."):
+            # Process debit/credit columns if mapped
+            processed_data = st.session_state.data.copy()
+            working_column_mapping = st.session_state.column_mapping.copy()
+            
+            if 'debit' in st.session_state.column_mapping and 'credit' in st.session_state.column_mapping:
+                data_processor = DataProcessor()
+                processed_data, net_amount_col = data_processor.process_debit_credit_columns(
+                    processed_data,
+                    st.session_state.column_mapping['debit'],
+                    st.session_state.column_mapping['credit']
+                )
+                if net_amount_col:
+                    working_column_mapping['amount'] = net_amount_col
+                    st.info("💡 Using combined debit/credit amounts for analysis")
+            
             # Parse criteria using NLP
             parsed_criteria = st.session_state.criteria_interpreter.parse_criteria(
-                criteria_text, st.session_state.column_mapping
+                criteria_text, working_column_mapping
             )
             
             # Apply criteria to data
             sampled_data = st.session_state.criteria_interpreter.apply_criteria(
-                st.session_state.data, 
+                processed_data, 
                 parsed_criteria, 
-                st.session_state.column_mapping
+                working_column_mapping
             )
             
             # Analyze descriptions for audit red flags
-            if 'description' in st.session_state.column_mapping:
-                description_col = st.session_state.column_mapping['description']
+            if 'description' in working_column_mapping:
+                description_col = working_column_mapping['description']
                 sampled_data = st.session_state.audit_analyzer.analyze_descriptions(
                     sampled_data, description_col
                 )
@@ -283,12 +300,19 @@ def apply_sampling_criteria(criteria_text):
             # Display sampled data
             st.subheader("📋 Selected Transactions")
             
-            # Add reasoning column if available
+            # Ensure selection reason is always available
             display_data = sampled_data.copy()
-            if 'selection_reason' in display_data.columns:
-                st.dataframe(display_data, use_container_width=True)
-            else:
-                st.dataframe(display_data, use_container_width=True)
+            if 'selection_reason' not in display_data.columns:
+                display_data['selection_reason'] = 'Selected based on criteria match'
+            
+            # Reorder columns to put selection reason first for visibility
+            cols = display_data.columns.tolist()
+            if 'selection_reason' in cols:
+                cols.remove('selection_reason')
+                cols = ['selection_reason'] + cols
+                display_data = display_data[cols]
+            
+            st.dataframe(display_data, use_container_width=True)
             
             # Export functionality
             col1, col2 = st.columns(2)

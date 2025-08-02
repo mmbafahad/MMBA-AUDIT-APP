@@ -102,7 +102,7 @@ class PrebuiltCriteriaProcessor:
         
         # Apply threshold filter if specified
         threshold = config.get('threshold_amount')
-        if threshold:
+        if threshold and threshold > 0:
             if transaction_type == 'credit' and 'credit_amount_only' in result_df.columns:
                 result_df = result_df[result_df['credit_amount_only'] >= threshold]
             elif transaction_type == 'debit' and 'debit_amount_only' in result_df.columns:
@@ -118,9 +118,10 @@ class PrebuiltCriteriaProcessor:
         result_df = result_df.head(num_transactions)
         
         # Add selection reason
-        threshold_text = f" above {threshold}" if threshold else ""
+        threshold_text = f" above {threshold}" if threshold and threshold > 0 else ""
         type_text = f" {transaction_type}" if transaction_type != 'both' else ""
-        result_df['selection_reason'] = f"High-Value Transaction: Top {num_transactions}{type_text} transactions{threshold_text}"
+        if len(result_df) > 0:
+            result_df['selection_reason'] = f"High-Value Transaction: Top {num_transactions}{type_text} transactions{threshold_text}"
         
         return result_df
     
@@ -136,7 +137,8 @@ class PrebuiltCriteriaProcessor:
                 (df[description_column].astype(str).str.lower().isin(['nan', 'null', 'none', 'n/a', '-'])))
         
         result_df = df[mask].copy()
-        result_df['selection_reason'] = "Missing Description: Transaction has empty or missing description"
+        if len(result_df) > 0:
+            result_df['selection_reason'] = "Missing Description: Transaction has empty or missing description"
         
         return result_df
     
@@ -197,7 +199,7 @@ class PrebuiltCriteriaProcessor:
         mask = df.duplicated(subset=columns_to_check, keep=False)
         result_df = df[mask].copy()
         
-        if len(result_df) > 0:
+        if len(result_df) > 0 and reason_parts:
             reason_text = ' and '.join(reason_parts)
             result_df['selection_reason'] = f"Duplicate Transaction: Duplicate {reason_text} detected"
         
@@ -244,10 +246,10 @@ class PrebuiltCriteriaProcessor:
         
         # Convert dates
         try:
-            df_dates = pd.to_datetime(df[date_column], errors='coerce')
+            df_dates = pd.to_datetime(df[date_column], errors='coerce', infer_datetime_format=True)
             start_date = pd.to_datetime(start_date)
             end_date = pd.to_datetime(end_date)
-        except:
+        except Exception:
             return df.iloc[0:0].copy()
         
         # Find transactions outside the expected date range
@@ -275,24 +277,44 @@ class PrebuiltCriteriaProcessor:
         if not results_list:
             return pd.DataFrame()
         
+        # Ensure all dataframes have selection_reason column
+        processed_results = []
+        for df in results_list:
+            if 'selection_reason' not in df.columns and len(df) > 0:
+                df = df.copy()
+                df['selection_reason'] = 'Selected by criteria'
+            processed_results.append(df)
+        
+        # Filter out empty dataframes
+        processed_results = [df for df in processed_results if len(df) > 0]
+        
+        if not processed_results:
+            return pd.DataFrame()
+        
         # Combine all dataframes
-        combined_df = pd.concat(results_list, ignore_index=True)
+        combined_df = pd.concat(processed_results, ignore_index=True)
         
         # Group by all columns except selection_reason to combine reasons for duplicates
-        if 'selection_reason' in combined_df.columns:
+        if 'selection_reason' in combined_df.columns and len(combined_df) > 0:
             # Get all columns except selection_reason for grouping
             group_columns = [col for col in combined_df.columns if col != 'selection_reason']
             
-            # Group and combine selection reasons
-            def combine_reasons(group):
-                reasons = group['selection_reason'].unique()
-                return ' | '.join(reasons)
-            
-            # Group by all columns except selection_reason
-            grouped = combined_df.groupby(group_columns, as_index=False).agg({
-                'selection_reason': combine_reasons
-            })
-            
-            return grouped
+            if group_columns:  # Only group if there are columns to group by
+                # Group and combine selection reasons
+                def combine_reasons(group):
+                    reasons = group['selection_reason'].unique()
+                    return ' | '.join(reasons)
+                
+                # Group by all columns except selection_reason
+                try:
+                    grouped = combined_df.groupby(group_columns, as_index=False).agg({
+                        'selection_reason': combine_reasons
+                    })
+                    return grouped
+                except Exception:
+                    # If grouping fails, just remove duplicates
+                    return combined_df.drop_duplicates()
+            else:
+                return combined_df
         
         return combined_df.drop_duplicates()

@@ -28,12 +28,12 @@ if 'prebuilt_processor' not in st.session_state:
 
 def main():
     st.set_page_config(
-        page_title="Audit Transaction Sampling Tool",
+        page_title=" MMBA Audit Sampling Tool",
         page_icon="🔍",
         layout="wide"
     )
     
-    st.title("🔍 Audit Transaction Sampling Tool")
+    st.title("MMBA Audit Transaction Sampling Tool")
     st.markdown("Upload transaction data and use natural language to define sampling criteria")
     
     # Sidebar for data input and column mapping
@@ -213,7 +213,7 @@ Date       Amount    Description        Account
     else:
         # Welcome screen
         st.markdown("""
-        ## Welcome to the Audit Transaction Sampling Tool
+        ## Welcome to the MMBA Audit Sampling Tool
         
         This tool helps auditors efficiently sample transaction data using natural language criteria.
         

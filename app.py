@@ -131,12 +131,6 @@ def display_header():
 
 def display_data_input_section():
     """Display the data input section at the top"""
-    st.markdown("""
-    <div class="section-header">
-        <h2><span class="step-number">1</span>Data Input</h2>
-        <p>Upload your transaction data or paste it directly from Excel/CSV</p>
-    </div>
-    """, unsafe_allow_html=True)
     
     # Data input in main area
     col1, col2 = st.columns([2, 1])
@@ -214,13 +208,6 @@ def display_column_mapping_section():
     """Display column mapping section"""
     if st.session_state.data is None:
         return
-        
-    st.markdown("""
-    <div class="section-header">
-        <h2><span class="step-number">2</span>Column Mapping</h2>
-        <p>Map your columns to standard transaction fields</p>
-    </div>
-    """, unsafe_allow_html=True)
     
     st.markdown('<div class="criteria-section">', unsafe_allow_html=True)
     
@@ -290,13 +277,6 @@ def display_criteria_selection():
     """Display criteria selection with modern design"""
     if not st.session_state.column_mapping or st.session_state.data is None:
         return
-        
-    st.markdown("""
-    <div class="section-header">
-        <h2><span class="step-number">3</span>Audit Criteria</h2>
-        <p>Choose your analysis method: Standard audit criteria or custom natural language</p>
-    </div>
-    """, unsafe_allow_html=True)
     
     # Criteria mode selection
     criteria_mode = st.radio(
@@ -735,6 +715,13 @@ def main():
     
     # Criteria selection and analysis
     display_criteria_selection()
+    
+    # Footer
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem 0; margin-top: 3rem; border-top: 1px solid #dee2e6; color: #666; font-size: 0.9rem;">
+        <p>Copyright MMBA ACCOUNTANT</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

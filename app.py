@@ -190,26 +190,13 @@ def display_data_input_section():
     
     with col2:
         if st.session_state.data is not None:
-            st.markdown("""
-            <div class="feature-card">
-                <h4>📊 Data Summary</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.metric("Total Transactions", f"{len(st.session_state.data):,}")
-            st.metric("Columns", len(st.session_state.data.columns))
-            
-            # Show column types
-            st.markdown("**Column Types:**")
-            for col in st.session_state.data.columns[:5]:  # Show first 5 columns
-                st.text(f"• {col}")
+            st.success(f"📊 {len(st.session_state.data):,} transactions loaded")
+            st.info(f"📋 {len(st.session_state.data.columns)} columns found")
 
 def display_column_mapping_section():
     """Display column mapping section"""
     if st.session_state.data is None:
         return
-    
-    st.markdown('<div class="criteria-section">', unsafe_allow_html=True)
     
     available_columns = list(st.session_state.data.columns)
     
@@ -270,8 +257,6 @@ def display_column_mapping_section():
                 [""] + available_columns,
                 key="credit_col"
             )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def display_criteria_selection():
     """Display criteria selection with modern design"""
@@ -293,7 +278,6 @@ def display_criteria_selection():
 
 def display_prebuilt_criteria_ui():
     """Display the prebuilt criteria configuration UI"""
-    st.markdown('<div class="criteria-section">', unsafe_allow_html=True)
     st.markdown("Configure standard audit criteria automatically applied to your data:")
     
     # Initialize criteria config in session state
@@ -437,12 +421,9 @@ def display_prebuilt_criteria_ui():
     
     if st.button("🔍 Apply Standard + Custom Criteria", type="secondary"):
         apply_prebuilt_criteria(additional_criteria.strip() if additional_criteria.strip() else None)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def display_custom_criteria_ui():
     """Display the custom natural language criteria UI"""
-    st.markdown('<div class="criteria-section">', unsafe_allow_html=True)
     st.markdown("Enter your sampling criteria in natural language:")
     
     # Example criteria
@@ -474,8 +455,6 @@ def display_custom_criteria_ui():
             apply_sampling_criteria(criteria_text)
         else:
             st.warning("Please enter sampling criteria")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # Include all other existing functions from the original app.py
 # (apply_prebuilt_criteria, apply_sampling_criteria, display_results, etc.)

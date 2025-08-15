@@ -1,0 +1,47 @@
+🔢 High-Value Transactions
+
+Number of transactions:
+
+10
+
+
+Transaction type:
+
+credit
+Threshold amount (optional):
+
+0.00
+
+
+📝 Description Checks
+
+
+📅 Date Range Check
+
+Expected start date:
+
+2023/07/04
+Expected end date:
+
+2024/06/30
+🔄 Duplicate Transaction Check
+
+Check duplicates by:
+
+reference
+amount
+⭕ Round Amount Check
+
+Check for multiples of:
+
+100
+
+Using combined debit/credit amounts for analysis
+
+Error applying prebuilt criteria: 'selection_reason'
+
+Traceback (most recent call last): File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc return self._engine.get_loc(casted_key) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "pandas/_libs/index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc File "pandas/_libs/index.pyx", line 175, in pandas._libs.index.IndexEngine.get_loc File "pandas/_libs/index_class_helper.pxi", line 70, in pandas._libs.index.Int64Engine._check_type KeyError: 'selection_reason'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last): File "/home/runner/workspace/app.py", line 419, in apply_prebuilt_criteria prebuilt_results, criteria_stats = st.session_state.prebuilt_processor.apply_all_prebuilt_criteria( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/utils/prebuilt_criteria.py", line 71, in apply_all_prebuilt_criteria combined_df = self._combine_results_with_reasons(all_results) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/utils/prebuilt_criteria.py", line 292, in _combine_results_with_reasons grouped = combined_df.groupby(group_columns, as_index=False).agg({ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 1432, in aggregate result = op.agg() ^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/apply.py", line 190, in agg return self.agg_dict_like() ^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/apply.py", line 423, in agg_dict_like return self.agg_or_apply_dict_like(op_name="agg") ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/apply.py", line 1603, in agg_or_apply_dict_like result_index, result_data = self.compute_dict_like( ^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/apply.py", line 496, in compute_dict_like results = [ ^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/apply.py", line 497, in <listcomp> getattr(obj._gotitem(key, ndim=1), op_name)(how, **kwargs) File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 291, in aggregate return self._python_agg_general(func, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 327, in _python_agg_general result = self._grouper.agg_series(obj, f) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/groupby/ops.py", line 864, in agg_series result = self._aggregate_series_pure_python(obj, func) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/groupby/ops.py", line 885, in _aggregate_series_pure_python res = func(group) ^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 324, in <lambda> f = lambda x: func(x, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/utils/prebuilt_criteria.py", line 288, in combine_reasons reasons = group['selection_reason'].unique() ~~~~~^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/series.py", line 1130, in getitem return self._get_value(key) ^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/series.py", line 1246, in _get_value loc = self.index.get_loc(label) ^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/indexes/base.py", line 3819, in get_loc raise KeyError(key) from err KeyError: 'selection_reason'
